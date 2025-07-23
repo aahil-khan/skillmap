@@ -60,6 +60,19 @@ export default function IntentPage() {
         goal: refinedIntent
       }
 
+      // Handle response if needed
+      const userResponse = await fetch('http://localhost:5001/send_user_profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedProfile),
+      })
+
+      if (!userResponse.ok) {
+        throw new Error('Failed to update profile')
+      }
+
       // Save updated profile back to localStorage
       localStorage.setItem("profile-data", JSON.stringify(updatedProfile))
       localStorage.setItem("user-intent", refinedIntent)
