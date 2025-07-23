@@ -19,31 +19,10 @@ export default function HomePage() {
     <div className="min-h-screen skillmap-bg">
       {/* Header */}
       <header className="skillmap-header text-white animate-fadeInDown">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-white hover:bg-white/20 transition-all duration-300 hover:scale-105"
-              onClick={() => setShowExploreMenu(!showExploreMenu)}
-            >
-              <Menu className="h-5 w-5 transition-transform duration-300 hover:rotate-90" />
-              <span className="ml-2 text-sm">explore</span>
-            </Button>
-          </div>
-
+        <div className="container mx-auto px-4 py-4 flex items-center justify-center">
           <div className="text-2xl font-bold hover:scale-105 transition-transform duration-300 cursor-pointer">
-            skillMap
+        skillMap
           </div>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-white hover:bg-white/20 transition-all duration-300 hover:scale-105"
-          >
-            <User className="h-5 w-5" />
-            <span className="ml-2 text-sm">login</span>
-          </Button>
         </div>
       </header>
 
@@ -104,9 +83,6 @@ export default function HomePage() {
         <div
           className={`container mx-auto text-center max-w-4xl transition-all duration-1000 ${isLoaded ? "animate-fadeInUp" : "opacity-0"}`}
         >
-          <Badge variant="secondary" className="mb-4 bg-gray-200 text-gray-800 animate-bounce-slow">
-            Powered by AI
-          </Badge>
           <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 animate-fadeInUp animate-delay-200">
             Map your skills.{" "}
             <span className="text-blue-600 hover:scale-105 inline-block transition-transform duration-300">
@@ -119,13 +95,10 @@ export default function HomePage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fadeInUp animate-delay-400">
             <Button asChild size="lg" className="skillmap-button text-white text-lg px-8 hover-lift">
-              <Link href="/auth">
+              <Link href="/upload">
                 Try SkillMap{" "}
                 <ArrowRight className="ml-2 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
               </Link>
-            </Button>
-            <Button variant="outline" size="lg" className="text-lg px-8 bg-transparent hover-lift hover:bg-white/50">
-              View Demo
             </Button>
           </div>
         </div>
@@ -240,7 +213,7 @@ export default function HomePage() {
             Join thousands of developers who've accelerated their learning with SkillMap.
           </p>
           <Button asChild size="lg" variant="secondary" className="text-lg px-8 hover-lift hover:scale-105">
-            <Link href="/auth">
+            <Link href="/upload">
               Start Your Journey{" "}
               <ArrowRight className="ml-2 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
             </Link>
