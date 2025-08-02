@@ -35,7 +35,7 @@ export default function IntentPage() {
     
     try {
       // Send intent to backend to convert to standalone question
-      const response = await fetch('http://localhost:5005/convert-to-standalone', {
+      const response = await fetch('https://api.aahil-khan.tech/convert-to-standalone', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -66,7 +66,7 @@ export default function IntentPage() {
 
       // Handle response if needed
       try {
-        const userResponse = await apiFetch('http://localhost:5005/user-profile', {
+        const userResponse = await apiFetch('https://api.aahil-khan.tech/user-profile', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
