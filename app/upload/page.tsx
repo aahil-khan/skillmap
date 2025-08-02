@@ -91,69 +91,68 @@ export default function UploadPage() {
         throw new Error(`${errorMessage} (Status: ${response.status})`)
       }
 
-        const data = await response.json()
+      const data = await response.json()
 
-        localStorage.setItem("profile-data", JSON.stringify(data.profile))
+      localStorage.setItem("profile-data", JSON.stringify(data.profile))
 
       console.log('Profile data received:', data)
 
-        // Extract technical skills from the response
-        const extractedSkills: Array<{ category: string; skills: string[] }> = []
-        
-        // Handle the double-nested profile structure
-        const technicalSkills = data.profile?.technical_skills || data.technical_skills
+      // Extract technical skills from the response
+      const extractedSkills: Array<{ category: string; skills: string[] }> = []
+      
+      // Handle the double-nested profile structure
+      const technicalSkills = data.profile?.technical_skills || data.technical_skills
 
-        if (technicalSkills) {
-          technicalSkills.forEach((category: any) => {
-            console.log('Processing category:', category)
-            if (category.category && category.skills) {
-              extractedSkills.push({
-                category: category.category,
-                skills: category.skills
-              })
-            }
-          })
-        } else {
-          console.log('No technical skills found in response')
-        }
-
-        console.log('Extracted skills:', extractedSkills)
-        localStorage.setItem("extracted-skills", JSON.stringify(extractedSkills))
-      } catch (apiError) {
-        console.warn('API call failed, using mock data:', apiError)
-        // Fallback to mock data if API fails
-        const mockSkills = [
-          {
-            category: "Web Development",
-            skills: ["HTML", "CSS", "JavaScript", "React", "Node.js", "Express.js"]
-          },
-          {
-            category: "Database Systems", 
-            skills: ["PostgreSQL", "MongoDB", "Redis"]
-          },
-          {
-            category: "Programming Languages",
-            skills: ["Python", "TypeScript", "Java"]
+      if (technicalSkills) {
+        technicalSkills.forEach((category: any) => {
+          console.log('Processing category:', category)
+          if (category.category && category.skills) {
+            extractedSkills.push({
+              category: category.category,
+              skills: category.skills
+            })
           }
-        ]
-        
-        const mockProfile = {
-          name: "Demo User",
-          email: "demo@example.com",
-          profile: {
-            technical_skills: mockSkills
-          }
-        }
-        
-        localStorage.setItem("extracted-skills", JSON.stringify(mockSkills))
-        localStorage.setItem("profile-data", JSON.stringify(mockProfile))
+        })
+      } else {
+        console.log('No technical skills found in response')
       }
 
+      console.log('Extracted skills:', extractedSkills)
+      localStorage.setItem("extracted-skills", JSON.stringify(extractedSkills))
       router.push("/skills")
+      
     } catch (error) {
       console.error('Error uploading resume:', error)
+      
+      // Fallback to mock data if API fails
+      const mockSkills = [
+        {
+          category: "Web Development",
+          skills: ["HTML", "CSS", "JavaScript", "React", "Node.js", "Express.js"]
+        },
+        {
+          category: "Database Systems", 
+          skills: ["PostgreSQL", "MongoDB", "Redis"]
+        },
+        {
+          category: "Programming Languages",
+          skills: ["Python", "TypeScript", "Java"]
+        }
+      ]
+      
+      const mockProfile = {
+        name: "Demo User",
+        email: "demo@example.com",
+        profile: {
+          technical_skills: mockSkills
+        }
+      }
+      
+      localStorage.setItem("extracted-skills", JSON.stringify(mockSkills))
+      localStorage.setItem("profile-data", JSON.stringify(mockProfile))
+      router.push("/skills")
+    } finally {
       setIsUploading(false)
-      // You might want to show an error message to the user here
     }
   }
 

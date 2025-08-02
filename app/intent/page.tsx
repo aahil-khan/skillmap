@@ -43,73 +43,71 @@ export default function IntentPage() {
         body: JSON.stringify({ goal: intent.trim() }),
       })
 
-        if (!response.ok) {
-          throw new Error('Failed to process intent')
-        }
-
-        const data = await response.json()
-        const refinedIntent = data.goalResponse || data.standalone || intent.trim()
-
-        // Get stored profile data from localStorage
-        const storedProfile = localStorage.getItem("profile-data")
-        let profileData = {}
-        
-        if (storedProfile) {
-          profileData = JSON.parse(storedProfile)
-        }
-
-        // Add goal property with refined intent
-        const updatedProfile = {
-          ...profileData,
-          goal: refinedIntent
-        }
-
-      // Handle response if needed
-      const userResponse = await apiFetch('http://localhost:5005/user-profile', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updatedProfile),
-      })
-
-          if (userResponse.ok) {
-            console.log('Profile sent to backend successfully')
-          }
-        } catch (profileError) {
-          console.warn('Failed to send profile to backend:', profileError)
-        }
-
-        // Save updated profile back to localStorage
-        localStorage.setItem("profile-data", JSON.stringify(updatedProfile))
-        localStorage.setItem("user-intent", refinedIntent)
-
-        console.log('Profile updated with goal:', updatedProfile)
-      } catch (apiError) {
-        console.warn('API call failed, using original intent:', apiError)
-        
-        // Fallback: use original intent if API fails
-        const storedProfile = localStorage.getItem("profile-data")
-        let profileData = {}
-        
-        if (storedProfile) {
-          profileData = JSON.parse(storedProfile)
-        }
-
-        const updatedProfile = {
-          ...profileData,
-          goal: intent.trim()
-        }
-
-        localStorage.setItem("profile-data", JSON.stringify(updatedProfile))
-        localStorage.setItem("user-intent", intent.trim())
+      if (!response.ok) {
+        throw new Error('Failed to process intent')
       }
 
+      const data = await response.json()
+      const refinedIntent = data.goalResponse || data.standalone || intent.trim()
+
+      // Get stored profile data from localStorage
+      const storedProfile = localStorage.getItem("profile-data")
+      let profileData = {}
+      
+      if (storedProfile) {
+        profileData = JSON.parse(storedProfile)
+      }
+
+      // Add goal property with refined intent
+      const updatedProfile = {
+        ...profileData,
+        goal: refinedIntent
+      }
+
+      // Handle response if needed
+      try {
+        const userResponse = await apiFetch('http://localhost:5005/user-profile', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updatedProfile),
+        })
+
+        if (userResponse.ok) {
+          console.log('Profile sent to backend successfully')
+        }
+      } catch (profileError) {
+        console.warn('Failed to send profile to backend:', profileError)
+      }
+
+      // Save updated profile back to localStorage
+      localStorage.setItem("profile-data", JSON.stringify(updatedProfile))
+      localStorage.setItem("user-intent", refinedIntent)
+
+      console.log('Profile updated with goal:', updatedProfile)
+      
       router.push("/results")
-    } catch (error) {
-      console.error('Error processing intent:', error)
-      // Fallback: save original intent and continue
+      
+    } catch (apiError) {
+      console.warn('API call failed, using original intent:', apiError)
+      
+      // Fallback: use original intent if API fails
+      const storedProfile = localStorage.getItem("profile-data")
+      let profileData = {}
+      
+      if (storedProfile) {
+        profileData = JSON.parse(storedProfile)
+      }
+
+      const updatedProfile = {
+        ...profileData,
+        goal: intent.trim()
+      }
+
+      localStorage.setItem("profile-data", JSON.stringify(updatedProfile))
       localStorage.setItem("user-intent", intent.trim())
+      
       router.push("/results")
     } finally {
       setIsLoading(false)
