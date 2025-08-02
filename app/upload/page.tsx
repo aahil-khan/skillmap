@@ -3,13 +3,18 @@
 import type React from "react"
 
 import { useState, useRef, useEffect } from "react"
+import { useAuthRedirect } from "@/hooks/useAuthRedirect"
+import { apiFetch } from "@/lib/utils"
+import { testAuth } from "@/lib/test-auth"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Menu, User, Upload, FileText, ArrowRight, ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import Navbar from "@/components/Navbar"
 
 export default function UploadPage() {
+  useAuthRedirect()
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
@@ -55,18 +60,35 @@ export default function UploadPage() {
     setIsUploading(true)
 
     try {
+      // Debug: Check if JWT token exists
+      const token = localStorage.getItem('sb-jwt')
+      console.log('JWT token for upload:', token ? 'exists' : 'missing')
+      console.log('Token preview:', token ? token.substring(0, 20) + '...' : 'no token')
+
       // Create FormData to send the file
       const formData = new FormData()
       formData.append('resume', file)
 
       // Send file to backend server for processing
-      const response = await fetch('http://localhost:5000/upload-resume', {
+      const response = await apiFetch('http://localhost:5005/upload-resume', {
         method: 'POST',
         body: formData,
       })
 
+      console.log('Upload response status:', response.status)
+      console.log('Upload response ok:', response.ok)
+
       if (!response.ok) {
-        throw new Error('Failed to process resume')
+        // Try to get the error message from the response
+        let errorMessage = 'Failed to process resume'
+        try {
+          const errorData = await response.json()
+          console.log('Error response:', errorData)
+          errorMessage = errorData.error || errorData.message || errorMessage
+        } catch (e) {
+          console.log('Could not parse error response as JSON')
+        }
+        throw new Error(`${errorMessage} (Status: ${response.status})`)
       }
 
       const data = await response.json()
@@ -74,9 +96,6 @@ export default function UploadPage() {
       localStorage.setItem("profile-data", JSON.stringify(data.profile))
 
       console.log('Profile data received:', data)
-      console.log('Checking data.profile:', data.profile)
-      console.log('Checking data.profile?.profile:', data.profile?.profile)
-      console.log('Checking technical_skills:', data.profile?.profile?.technical_skills)
 
       // Extract technical skills from the response
       const extractedSkills: Array<{ category: string; skills: string[] }> = []
@@ -111,34 +130,7 @@ export default function UploadPage() {
 
   return (
     <div className="min-h-screen skillmap-bg">
-      {/* Header */}
-      <header className="skillmap-header text-white animate-fadeInDown">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-white hover:bg-white/20 transition-all duration-300 hover:scale-105"
-            >
-              <Menu className="h-5 w-5 transition-transform duration-300 hover:rotate-90" />
-              <span className="ml-2 text-sm">explore</span>
-            </Button>
-          </div>
-
-          <Link href="/" className="text-2xl font-bold hover:scale-105 transition-transform duration-300">
-            skillMap
-          </Link>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-white hover:bg-white/20 transition-all duration-300 hover:scale-105"
-          >
-            <User className="h-5 w-5" />
-            <span className="ml-2 text-sm">login</span>
-          </Button>
-        </div>
-      </header>
+      <Navbar />
 
       <div className="container mx-auto px-4 py-16 max-w-2xl">
         <Card
@@ -151,6 +143,19 @@ export default function UploadPage() {
             </p>
           </CardHeader>
           <CardContent className="space-y-8 animate-fadeInUp animate-delay-300">
+            {/* Temporary Auth Test Button */}
+            <div className="text-center">
+              <Button
+                onClick={testAuth}
+                variant="outline"
+                size="sm"
+                className="mb-4"
+              >
+                Test JWT Authentication
+              </Button>
+              <p className="text-xs text-gray-500">Check console for results</p>
+            </div>
+            
             {/* Upload Area */}
             <div
               className={`border-2 border-dashed rounded-lg p-12 text-center transition-all duration-300 cursor-pointer hover-lift ${

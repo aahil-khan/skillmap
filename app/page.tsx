@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Menu, User, Upload, Users, Target, ArrowRight, X } from "lucide-react"
+import Navbar from "@/components/Navbar"
 
 export default function HomePage() {
   const [showExploreMenu, setShowExploreMenu] = useState(false)
@@ -15,16 +16,21 @@ export default function HomePage() {
     setIsLoaded(true)
   }, [])
 
+  const handleTrySkillMap = () => {
+    // Check if user is authenticated
+    const token = typeof window !== 'undefined' ? localStorage.getItem('sb-jwt') : null
+    if (token) {
+      // User is authenticated, redirect to upload
+      window.location.href = '/upload'
+    } else {
+      // User is not authenticated, redirect to auth
+      window.location.href = '/auth'
+    }
+  }
+
   return (
     <div className="min-h-screen skillmap-bg">
-      {/* Header */}
-      <header className="skillmap-header text-white animate-fadeInDown">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-center">
-          <div className="text-2xl font-bold hover:scale-105 transition-transform duration-300 cursor-pointer">
-        skillMap
-          </div>
-        </div>
-      </header>
+      <Navbar showExploreMenu={showExploreMenu} setShowExploreMenu={setShowExploreMenu} />
 
       {/* Explore Menu Overlay */}
       {showExploreMenu && (
@@ -94,11 +100,9 @@ export default function HomePage() {
             and early-career developers.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fadeInUp animate-delay-400">
-            <Button asChild size="lg" className="skillmap-button text-white text-lg px-8 hover-lift">
-              <Link href="/upload">
-                Try SkillMap{" "}
-                <ArrowRight className="ml-2 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
-              </Link>
+            <Button onClick={handleTrySkillMap} size="lg" className="skillmap-button text-white text-lg px-8 hover-lift">
+              Try SkillMap{" "}
+              <ArrowRight className="ml-2 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
             </Button>
           </div>
         </div>
@@ -212,11 +216,9 @@ export default function HomePage() {
           <p className="text-xl mb-8 text-white/90">
             Join thousands of developers who've accelerated their learning with SkillMap.
           </p>
-          <Button asChild size="lg" variant="secondary" className="text-lg px-8 hover-lift hover:scale-105">
-            <Link href="/upload">
-              Start Your Journey{" "}
-              <ArrowRight className="ml-2 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
-            </Link>
+          <Button onClick={handleTrySkillMap} size="lg" variant="secondary" className="text-lg px-8 hover-lift hover:scale-105">
+            Start Your Journey{" "}
+            <ArrowRight className="ml-2 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
           </Button>
         </div>
       </section>

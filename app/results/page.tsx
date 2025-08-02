@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Brain, CheckCircle, AlertTriangle, TrendingUp, Menu, User, ArrowLeft } from "lucide-react"
+import { apiFetch } from "@/lib/utils"
 import Link from "next/link"
 
 interface SkillItem {
@@ -69,7 +70,7 @@ export default function ResultsPage() {
       }
 
       // Send request to skill gap analysis API
-      const response = await fetch('http://localhost:5002/find-skill-gaps', {
+      const response = await apiFetch('http://localhost:5005/analyze-skill-gaps', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

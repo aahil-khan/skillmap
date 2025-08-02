@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useAuthRedirect } from "@/hooks/useAuthRedirect"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Menu, User, ArrowLeft, ArrowRight, CheckCircle } from "lucide-react"
 import Link from "next/link"
+import Navbar from "@/components/Navbar"
 
 interface Skill {
   name: string
@@ -25,6 +27,7 @@ interface CategorizedSkill {
 }
 
 export default function SkillsPage() {
+  useAuthRedirect()
   const router = useRouter()
   const [categorizedSkills, setCategorizedSkills] = useState<CategorizedSkill[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -92,26 +95,7 @@ export default function SkillsPage() {
 
   return (
     <div className="min-h-screen skillmap-bg">
-      {/* Header */}
-      <header className="skillmap-header text-white animate-fadeInDown">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
-              <Menu className="h-5 w-5" />
-              <span className="ml-2 text-sm">explore</span>
-            </Button>
-          </div>
-
-          <Link href="/" className="text-2xl font-bold">
-            skillMap
-          </Link>
-
-          <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
-            <User className="h-5 w-5" />
-            <span className="ml-2 text-sm">login</span>
-          </Button>
-        </div>
-      </header>
+      <Navbar />
 
       <div className="container mx-auto px-4 py-16 max-w-4xl">
         <Card

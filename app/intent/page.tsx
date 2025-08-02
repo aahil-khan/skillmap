@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useAuthRedirect } from "@/hooks/useAuthRedirect"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,6 +10,8 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Menu, User, ArrowLeft, ArrowRight, Target } from "lucide-react"
 import Link from "next/link"
+import Navbar from "@/components/Navbar"
+import { apiFetch } from "@/lib/utils"
 
 const EXAMPLE_INTENTS = [
   "I want to learn Data Structures and Algorithms",
@@ -20,6 +23,7 @@ const EXAMPLE_INTENTS = [
 ]
 
 export default function IntentPage() {
+  useAuthRedirect()
   const router = useRouter()
   const [intent, setIntent] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -31,7 +35,7 @@ export default function IntentPage() {
     
     try {
       // Send intent to backend to convert to standalone question
-      const response = await fetch('http://localhost:5000/convertToStandalone', {
+      const response = await fetch('http://localhost:5005/convert-to-standalone', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -61,7 +65,7 @@ export default function IntentPage() {
       }
 
       // Handle response if needed
-      const userResponse = await fetch('http://localhost:5001/send_user_profile', {
+      const userResponse = await apiFetch('http://localhost:5005/user-profile', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -96,26 +100,7 @@ export default function IntentPage() {
 
   return (
     <div className="min-h-screen skillmap-bg">
-      {/* Header */}
-      <header className="skillmap-header text-white animate-fadeInDown">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
-              <Menu className="h-5 w-5" />
-              <span className="ml-2 text-sm">explore</span>
-            </Button>
-          </div>
-
-          <Link href="/" className="text-2xl font-bold">
-            skillMap
-          </Link>
-
-          <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
-            <User className="h-5 w-5" />
-            <span className="ml-2 text-sm">login</span>
-          </Button>
-        </div>
-      </header>
+      <Navbar />
 
       <div className="container mx-auto px-4 py-16 max-w-3xl">
         <Card className="shadow-lg border-0 card-hover animate-scaleIn">

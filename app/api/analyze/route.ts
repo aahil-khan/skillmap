@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { apiFetch } from "@/lib/utils"
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,8 +15,8 @@ export async function POST(request: NextRequest) {
     // Forward the file to your backend server
     const backendFormData = new FormData()
     backendFormData.append('resume', file)
-    
-    const response = await fetch('http://localhost:5000/upload-resume', {
+
+    const response = await apiFetch('http://localhost:5005/upload-resume', {
       method: 'POST',
       body: backendFormData,
     })
