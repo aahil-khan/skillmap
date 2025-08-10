@@ -141,7 +141,7 @@ export default function SkillsPage() {
     <div className="min-h-screen skillmap-bg">
       <Navbar />
 
-      <div className="container mx-auto px-4 py-16 max-w-4xl">
+      <div className="container mx-auto px-4 py-8 sm:py-16 max-w-4xl">
         <Card
           className={`shadow-lg border-0 card-hover transition-all duration-1000 ${isLoaded ? "animate-scaleIn" : "opacity-0 scale-90"}`}
         >
@@ -152,8 +152,8 @@ export default function SkillsPage() {
                 Skills Extracted Successfully
               </Badge>
             </div>
-            <CardTitle className="text-3xl font-bold text-gray-900">Review Your Skills</CardTitle>
-            <p className="text-gray-600 mt-2">
+            <CardTitle className="text-2xl sm:text-3xl font-bold text-gray-900">Review Your Skills</CardTitle>
+            <p className="text-gray-600 mt-2 text-sm sm:text-base">
               We've extracted these skills from your resume. Please set your proficiency level for each.
             </p>
           </CardHeader>
@@ -162,8 +162,8 @@ export default function SkillsPage() {
             <div className="space-y-8">
               {categorizedSkills.map((category, categoryIndex) => (
                 <div key={category.category} className={`animate-fadeInUp animate-delay-${categoryIndex * 200}`}>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                    <Badge variant="secondary" className="mr-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white">
+                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 flex flex-col sm:flex-row sm:items-center">
+                    <Badge variant="secondary" className="mb-2 sm:mb-0 sm:mr-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white self-start">
                       {category.category}
                     </Badge>
                     <span className="text-sm text-gray-500">({category.skills.length} skills)</span>
@@ -172,19 +172,19 @@ export default function SkillsPage() {
                     {category.skills.map((skill, skillIndex) => (
                       <div
                         key={skill.name}
-                        className={`flex items-center justify-between p-4 border rounded-lg bg-white hover:bg-gray-50 transition-all duration-300 hover-lift animate-slideInLeft animate-delay-${Math.min(skillIndex * 100, 500)}`}
+                        className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 border rounded-lg bg-white hover:bg-gray-50 transition-all duration-300 hover-lift animate-slideInLeft animate-delay-${Math.min(skillIndex * 100, 500)} space-y-2 sm:space-y-0`}
                       >
                         <div className="flex items-center space-x-3">
-                          <Badge variant="outline" className="bg-blue-50 text-blue-800 border-blue-200">
+                          <Badge variant="outline" className="bg-blue-50 text-blue-800 border-blue-200 text-xs sm:text-sm">
                             {skill.name}
                           </Badge>
                         </div>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2 self-end sm:self-auto">
                           <Select 
                             value={skill.level} 
                             onValueChange={(level: any) => updateSkillLevel(category.category, skill.name, level)}
                           >
-                            <SelectTrigger className="w-40">
+                            <SelectTrigger className="w-32 sm:w-40 text-xs sm:text-sm">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -197,31 +197,32 @@ export default function SkillsPage() {
                             variant="outline"
                             size="sm"
                             onClick={() => removeSkill(category.category, skill.name)}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 p-2"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                           </Button>
                         </div>
                       </div>
                     ))}
                     
                     {/* Add new skill input */}
-                    <div className="flex items-center space-x-2 p-4 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+                    <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 p-3 sm:p-4 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
                       <Input
                         placeholder="Add a new skill..."
                         value={newSkillInputs[category.category] || ""}
                         onChange={(e) => handleNewSkillInputChange(category.category, e.target.value)}
                         onKeyPress={(e) => handleKeyPress(e, category.category)}
-                        className="flex-1 border-0 bg-transparent focus:bg-white focus:ring-2 focus:ring-blue-500"
+                        className="flex-1 border-0 bg-transparent focus:bg-white focus:ring-2 focus:ring-blue-500 text-sm"
                       />
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => addSkill(category.category, newSkillInputs[category.category] || "")}
                         disabled={!(newSkillInputs[category.category] || "").trim()}
-                        className="text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200 disabled:opacity-50"
+                        className="text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200 disabled:opacity-50 self-end sm:self-auto w-10 sm:w-auto"
                       >
-                        <Plus className="h-4 w-4" />
+                        <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
+                        <span className="hidden sm:inline ml-1">Add</span>
                       </Button>
                     </div>
                   </div>
@@ -230,27 +231,27 @@ export default function SkillsPage() {
             </div>
 
             {/* Summary */}
-            <div className="bg-blue-50 p-6 rounded-lg">
-              <h3 className="font-semibold text-blue-900 mb-2">Skills Summary</h3>
-              <div className="flex flex-wrap gap-2">
-                <Badge className="bg-green-100 text-green-800">
+            <div className="bg-blue-50 p-4 sm:p-6 rounded-lg">
+              <h3 className="font-semibold text-blue-900 mb-2 text-sm sm:text-base">Skills Summary</h3>
+              <div className="flex flex-wrap gap-1 sm:gap-2">
+                <Badge className="bg-green-100 text-green-800 text-xs sm:text-sm">
                   Advanced: {getAllSkills().filter((s) => s.level === "advanced").length}
                 </Badge>
-                <Badge className="bg-yellow-100 text-yellow-800">
+                <Badge className="bg-yellow-100 text-yellow-800 text-xs sm:text-sm">
                   Intermediate: {getAllSkills().filter((s) => s.level === "intermediate").length}
                 </Badge>
-                <Badge className="bg-gray-100 text-gray-800">
+                <Badge className="bg-gray-100 text-gray-800 text-xs sm:text-sm">
                   Beginner: {getAllSkills().filter((s) => s.level === "beginner").length}
                 </Badge>
-                <Badge className="bg-blue-100 text-blue-800">
+                <Badge className="bg-blue-100 text-blue-800 text-xs sm:text-sm">
                   Total Categories: {categorizedSkills.length}
                 </Badge>
               </div>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex justify-between pt-6">
-              <Button variant="outline" asChild>
+            <div className="flex flex-col sm:flex-row justify-between gap-3 sm:gap-0 pt-6">
+              <Button variant="outline" asChild className="w-full sm:w-auto">
                 <Link href="/upload">
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back to Upload
@@ -259,15 +260,18 @@ export default function SkillsPage() {
               <Button
                 onClick={handleContinue}
                 disabled={isLoading}
-                className="skillmap-button text-white min-w-32 hover-lift"
+                className="skillmap-button text-white min-w-32 hover-lift w-full sm:w-auto"
               >
                 {isLoading ? (
-                  <span className="flex items-center">
+                  <span className="flex items-center justify-center">
                     <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
                     Saving<span className="loading-dots"></span>
                   </span>
                 ) : (
-                  "Continue"
+                  <>
+                    <span className="sm:hidden">Continue</span>
+                    <span className="hidden sm:inline">Continue</span>
+                  </>
                 )}
                 {!isLoading && <ArrowRight className="ml-2 h-4 w-4" />}
               </Button>

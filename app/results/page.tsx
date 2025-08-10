@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress"
 import { Brain, CheckCircle, AlertTriangle, TrendingUp, Menu, User, ArrowLeft } from "lucide-react"
 import { apiFetch } from "@/lib/utils"
 import Link from "next/link"
+import Navbar from "@/components/Navbar"
 
 interface SkillItem {
   name: string
@@ -247,26 +248,7 @@ This learning path will help you achieve your goal of becoming a well-rounded we
 
   return (
     <div className="min-h-screen skillmap-bg">
-      {/* Header */}
-      <header className="skillmap-header text-white animate-fadeInDown">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
-              <Menu className="h-5 w-5" />
-              <span className="ml-2 text-sm">explore</span>
-            </Button>
-          </div>
-
-          <Link href="/" className="text-2xl font-bold">
-            skillMap
-          </Link>
-
-          <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
-            <User className="h-5 w-5" />
-            <span className="ml-2 text-sm">login</span>
-          </Button>
-        </div>
-      </header>
+      <Navbar />
 
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         {/* Header Section */}
