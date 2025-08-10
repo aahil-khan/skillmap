@@ -104,56 +104,10 @@ export default function Navbar({ showExploreMenu, setShowExploreMenu }: NavbarPr
     router.push('/')
   }
 
-  // Function to completely flush auth cache and data
-  const flushAuthCache = async () => {
-    console.log('Flushing all auth cache and data...')
-    
-    // Clear Supabase auth session
-    await supabase.auth.signOut()
-    
-    // Clear all localStorage
-    localStorage.clear()
-    
-    // Clear sessionStorage as well
-    sessionStorage.clear()
-    
-    // Reset component state
-    setIsAuthenticated(false)
-    setUserDetails(null)
-    setShowProfileMenu(false)
-    
-    // Try to refresh session to clear any cached auth state
-    try {
-      await supabase.auth.refreshSession()
-    } catch (error) {
-      console.log('Session refresh error (expected):', error)
-    }
-    
-    console.log('Auth cache flushed completely')
-    
-    // Redirect to home and reload page to ensure clean state
-    router.push('/')
-    setTimeout(() => {
-      window.location.reload()
-    }, 100)
-  }
 
   return (
     <header className="skillmap-header text-white animate-fadeInDown">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          {setShowExploreMenu && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-white hover:bg-white/20 transition-all duration-300 hover:scale-105"
-              onClick={() => setShowExploreMenu(!showExploreMenu)}
-            >
-              <Menu className="h-5 w-5 transition-transform duration-300 hover:rotate-90" />
-              <span className="ml-2 text-sm">explore</span>
-            </Button>
-          )}
-        </div>
 
         <Link href="/" className="text-2xl font-bold hover:scale-105 transition-transform duration-300">
           skillMap
@@ -199,16 +153,6 @@ export default function Navbar({ showExploreMenu, setShowExploreMenu }: NavbarPr
                           >
                             <LogOut className="h-4 w-4 mr-2" />
                             Logout
-                          </Button>
-                          
-                          {/* Temporary flush cache button for debugging */}
-                          <Button
-                            onClick={flushAuthCache}
-                            variant="outline"
-                            size="sm"
-                            className="w-full text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300"
-                          >
-                            🗑️ Flush Auth Cache
                           </Button>
                         </CardContent>
                       </Card>

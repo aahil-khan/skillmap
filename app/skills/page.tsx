@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Menu, User, ArrowLeft, ArrowRight, CheckCircle } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Menu, User, ArrowLeft, ArrowRight, CheckCircle, Plus, Trash2, X } from "lucide-react"
 import Link from "next/link"
 import Navbar from "@/components/Navbar"
 
@@ -32,6 +33,7 @@ export default function SkillsPage() {
   const [categorizedSkills, setCategorizedSkills] = useState<CategorizedSkill[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isLoaded, setIsLoaded] = useState(false)
+  const [newSkillInputs, setNewSkillInputs] = useState<Record<string, string>>({}) // Track input values for each category
 
   useEffect(() => {
     setIsLoaded(true)
@@ -63,6 +65,48 @@ export default function SkillsPage() {
           }
         : category
     ))
+  }
+
+  const addSkill = (categoryName: string, skillName: string) => {
+    const trimmedSkill = skillName.trim()
+    if (!trimmedSkill) return
+    // Prevent duplicate skill names (case-insensitive)
+    const categoryObj = categorizedSkills.find(cat => cat.category === categoryName)
+    if (categoryObj && categoryObj.skills.some(skill => skill.name.toLowerCase() === trimmedSkill.toLowerCase())) {
+      return // Do not add duplicate
+    }
+    setCategorizedSkills(categorizedSkills.map(category => 
+      category.category === categoryName 
+        ? {
+            ...category,
+            skills: [...category.skills, { name: trimmedSkill, level: "beginner" }]
+          }
+        : category
+    ))
+    // Clear the input for this category
+    setNewSkillInputs(prev => ({ ...prev, [categoryName]: "" }))
+  }
+
+  const removeSkill = (categoryName: string, skillName: string) => {
+    setCategorizedSkills(categorizedSkills.map(category => 
+      category.category === categoryName 
+        ? {
+            ...category,
+            skills: category.skills.filter(skill => skill.name !== skillName)
+          }
+        : category
+    ))
+  }
+
+  const handleNewSkillInputChange = (categoryName: string, value: string) => {
+    setNewSkillInputs(prev => ({ ...prev, [categoryName]: value }))
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent, categoryName: string) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      addSkill(categoryName, newSkillInputs[categoryName] || "")
+    }
   }
 
   const handleContinue = async () => {
@@ -135,21 +179,51 @@ export default function SkillsPage() {
                             {skill.name}
                           </Badge>
                         </div>
-                        <Select 
-                          value={skill.level} 
-                          onValueChange={(level: any) => updateSkillLevel(category.category, skill.name, level)}
-                        >
-                          <SelectTrigger className="w-40">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="beginner">Beginner</SelectItem>
-                            <SelectItem value="intermediate">Intermediate</SelectItem>
-                            <SelectItem value="advanced">Advanced</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <div className="flex items-center space-x-2">
+                          <Select 
+                            value={skill.level} 
+                            onValueChange={(level: any) => updateSkillLevel(category.category, skill.name, level)}
+                          >
+                            <SelectTrigger className="w-40">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="beginner">Beginner</SelectItem>
+                              <SelectItem value="intermediate">Intermediate</SelectItem>
+                              <SelectItem value="advanced">Advanced</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => removeSkill(category.category, skill.name)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
+                    
+                    {/* Add new skill input */}
+                    <div className="flex items-center space-x-2 p-4 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+                      <Input
+                        placeholder="Add a new skill..."
+                        value={newSkillInputs[category.category] || ""}
+                        onChange={(e) => handleNewSkillInputChange(category.category, e.target.value)}
+                        onKeyPress={(e) => handleKeyPress(e, category.category)}
+                        className="flex-1 border-0 bg-transparent focus:bg-white focus:ring-2 focus:ring-blue-500"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => addSkill(category.category, newSkillInputs[category.category] || "")}
+                        disabled={!(newSkillInputs[category.category] || "").trim()}
+                        className="text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200 disabled:opacity-50"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}

@@ -30,59 +30,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen skillmap-bg">
-      <Navbar showExploreMenu={showExploreMenu} setShowExploreMenu={setShowExploreMenu} />
-
-      {/* Explore Menu Overlay */}
-      {showExploreMenu && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-white rounded-3xl p-8 max-w-2xl w-full relative border-4 border-blue-500 animate-scaleIn">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="absolute top-4 right-4 hover:rotate-90 transition-transform duration-300"
-              onClick={() => setShowExploreMenu(false)}
-            >
-              <X className="h-5 w-5" />
-            </Button>
-
-            <div className="grid grid-cols-3 gap-4 h-64">
-              {/* Features */}
-              <Card className="col-span-1 row-span-2 border-2 border-gray-800 rounded-2xl bg-cream-100 hover:bg-cream-200 transition-all duration-300 cursor-pointer hover-lift animate-fadeInUp">
-                <CardContent className="p-6 h-full flex items-center justify-center">
-                  <h3 className="text-xl font-bold text-gray-800 text-center">Features</h3>
-                </CardContent>
-              </Card>
-
-              {/* Upload Resume */}
-              <Card className="col-span-1 border-2 border-gray-800 rounded-2xl bg-cream-100 hover:bg-cream-200 transition-all duration-300 cursor-pointer hover-lift animate-fadeInUp animate-delay-100">
-                <CardContent className="p-4 h-full flex items-center justify-center">
-                  <div className="text-center">
-                    <h3 className="font-bold text-gray-800 text-sm">Upload Resume</h3>
-                    <p className="text-xs text-gray-600 mt-1">and get started</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Resume Generation */}
-              <Card className="col-span-1 border-2 border-gray-800 rounded-2xl bg-cream-100 hover:bg-cream-200 transition-all duration-300 cursor-pointer hover-lift animate-fadeInUp animate-delay-200">
-                <CardContent className="p-4 h-full flex items-center justify-center">
-                  <div className="text-center">
-                    <h3 className="font-bold text-gray-800 text-sm">Resume</h3>
-                    <p className="text-xs text-gray-600 mt-1">Generation</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Peer Mapping */}
-              <Card className="col-span-1 row-span-2 border-2 border-gray-800 rounded-2xl bg-cream-100 hover:bg-cream-200 transition-all duration-300 cursor-pointer hover-lift animate-fadeInUp animate-delay-300">
-                <CardContent className="p-6 h-full flex items-center justify-center">
-                  <h3 className="text-xl font-bold text-gray-800 text-center">Peer Mapping</h3>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </div>
-      )}
+      <Navbar />
 
       {/* Hero Section */}
       <section className="py-20 px-4">

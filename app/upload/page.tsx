@@ -70,7 +70,7 @@ export default function UploadPage() {
       formData.append('resume', file)
 
       // Send file to backend server for processing
-      const response = await apiFetch('https://api.aahil-khan.tech/upload-resume', {
+      const response = await apiFetch('http://localhost:5005/upload-resume', {
         method: 'POST',
         body: formData,
       })
@@ -171,18 +171,6 @@ export default function UploadPage() {
             </p>
           </CardHeader>
           <CardContent className="space-y-8 animate-fadeInUp animate-delay-300">
-            {/* Temporary Auth Test Button */}
-            <div className="text-center">
-              <Button
-                onClick={testAuth}
-                variant="outline"
-                size="sm"
-                className="mb-4"
-              >
-                Test JWT Authentication
-              </Button>
-              <p className="text-xs text-gray-500">Check console for results</p>
-            </div>
             
             {/* Upload Area */}
             <div
