@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Menu, User, Upload, Users, Target, ArrowRight, X } from "lucide-react"
+import Navbar from "@/components/Navbar"
 
 export default function HomePage() {
   const [showExploreMenu, setShowExploreMenu] = useState(false)
@@ -15,98 +16,29 @@ export default function HomePage() {
     setIsLoaded(true)
   }, [])
 
+  const handleTrySkillMap = () => {
+    // Check if user is authenticated
+    const token = typeof window !== 'undefined' ? localStorage.getItem('sb-jwt') : null
+    if (token) {
+      // User is authenticated, redirect to upload
+      window.location.href = '/upload'
+    } else {
+      // User is not authenticated, redirect to auth
+      window.location.href = '/auth'
+    }
+  }
+
   return (
     <div className="min-h-screen skillmap-bg">
-      {/* Header */}
-      <header className="skillmap-header text-white animate-fadeInDown">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-white hover:bg-white/20 transition-all duration-300 hover:scale-105"
-              onClick={() => setShowExploreMenu(!showExploreMenu)}
-            >
-              <Menu className="h-5 w-5 transition-transform duration-300 hover:rotate-90" />
-              <span className="ml-2 text-sm">explore</span>
-            </Button>
-          </div>
-
-          <div className="text-2xl font-bold hover:scale-105 transition-transform duration-300 cursor-pointer">
-            skillMap
-          </div>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-white hover:bg-white/20 transition-all duration-300 hover:scale-105"
-          >
-            <User className="h-5 w-5" />
-            <span className="ml-2 text-sm">login</span>
-          </Button>
-        </div>
-      </header>
-
-      {/* Explore Menu Overlay */}
-      {showExploreMenu && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-white rounded-3xl p-8 max-w-2xl w-full relative border-4 border-blue-500 animate-scaleIn">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="absolute top-4 right-4 hover:rotate-90 transition-transform duration-300"
-              onClick={() => setShowExploreMenu(false)}
-            >
-              <X className="h-5 w-5" />
-            </Button>
-
-            <div className="grid grid-cols-3 gap-4 h-64">
-              {/* Features */}
-              <Card className="col-span-1 row-span-2 border-2 border-gray-800 rounded-2xl bg-cream-100 hover:bg-cream-200 transition-all duration-300 cursor-pointer hover-lift animate-fadeInUp">
-                <CardContent className="p-6 h-full flex items-center justify-center">
-                  <h3 className="text-xl font-bold text-gray-800 text-center">Features</h3>
-                </CardContent>
-              </Card>
-
-              {/* Upload Resume */}
-              <Card className="col-span-1 border-2 border-gray-800 rounded-2xl bg-cream-100 hover:bg-cream-200 transition-all duration-300 cursor-pointer hover-lift animate-fadeInUp animate-delay-100">
-                <CardContent className="p-4 h-full flex items-center justify-center">
-                  <div className="text-center">
-                    <h3 className="font-bold text-gray-800 text-sm">Upload Resume</h3>
-                    <p className="text-xs text-gray-600 mt-1">and get started</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Resume Generation */}
-              <Card className="col-span-1 border-2 border-gray-800 rounded-2xl bg-cream-100 hover:bg-cream-200 transition-all duration-300 cursor-pointer hover-lift animate-fadeInUp animate-delay-200">
-                <CardContent className="p-4 h-full flex items-center justify-center">
-                  <div className="text-center">
-                    <h3 className="font-bold text-gray-800 text-sm">Resume</h3>
-                    <p className="text-xs text-gray-600 mt-1">Generation</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Peer Mapping */}
-              <Card className="col-span-1 row-span-2 border-2 border-gray-800 rounded-2xl bg-cream-100 hover:bg-cream-200 transition-all duration-300 cursor-pointer hover-lift animate-fadeInUp animate-delay-300">
-                <CardContent className="p-6 h-full flex items-center justify-center">
-                  <h3 className="text-xl font-bold text-gray-800 text-center">Peer Mapping</h3>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </div>
-      )}
+      <Navbar />
 
       {/* Hero Section */}
       <section className="py-20 px-4">
         <div
           className={`container mx-auto text-center max-w-4xl transition-all duration-1000 ${isLoaded ? "animate-fadeInUp" : "opacity-0"}`}
         >
-          
           <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 animate-fadeInUp animate-delay-200">
-            <span className="hover:scale-105 inline-block transition-transform duration-300">Map your skills.</span>{" "}
+            Map your skills.{" "}
             <span className="text-blue-600 hover:scale-105 inline-block transition-transform duration-300">
               Bridge your gaps.
             </span>
@@ -116,13 +48,10 @@ export default function HomePage() {
             and early-career developers.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fadeInUp animate-delay-400">
-            <Button asChild size="lg" className="skillmap-button text-white text-lg px-8 hover-lift">
-              <Link href="/auth">
-                Try SkillMap{" "}
-                <ArrowRight className="ml-2 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
-              </Link>
+            <Button onClick={handleTrySkillMap} size="lg" className="skillmap-button text-white text-lg px-8 hover-lift">
+              Try SkillMap{" "}
+              <ArrowRight className="ml-2 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
             </Button>
-            
           </div>
         </div>
       </section>
@@ -235,11 +164,9 @@ export default function HomePage() {
           <p className="text-xl mb-8 text-white/90">
             Join thousands of developers who've accelerated their learning with SkillMap.
           </p>
-          <Button asChild size="lg" variant="secondary" className="text-lg px-8 hover-lift hover:scale-105">
-            <Link href="/auth">
-              Start Your Journey{" "}
-              <ArrowRight className="ml-2 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
-            </Link>
+          <Button onClick={handleTrySkillMap} size="lg" variant="secondary" className="text-lg px-8 hover-lift hover:scale-105">
+            Start Your Journey{" "}
+            <ArrowRight className="ml-2 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
           </Button>
         </div>
       </section>
