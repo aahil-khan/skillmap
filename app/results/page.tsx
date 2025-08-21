@@ -6,276 +6,244 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { Brain, CheckCircle, AlertTriangle, X, RefreshCw, Menu, User, BarChart3 } from "lucide-react"
+import { Brain, CheckCircle, AlertTriangle, TrendingUp, Menu, User, ArrowLeft } from "lucide-react"
+import { apiFetch } from "@/lib/utils"
 import Link from "next/link"
 
-interface UserSkill {
+interface SkillItem {
   name: string
-  level: "beginner" | "intermediate" | "advanced"
+  description: string
+  priority?: "high" | "medium" | "low"
+  user_level?: "beginner" | "intermediate" | "advanced"
+  recommendation?: string
 }
 
-interface SkillGap {
-  skill: string
-  status: "known" | "weak" | "missing"
-  level?: string
+interface SkillAnalysis {
+  gaps: SkillItem[]
+  present: SkillItem[]
+  needs_improvement: SkillItem[]
+}
+
+interface CategoryAnalysis {
+  detected_category: string
+  matched_taxonomy_category: string
+  confidence: number
+  similarity: number
+  skills: SkillAnalysis
 }
 
 interface AnalysisResult {
-  goal: string
-  category: string
-  gaps: SkillGap[]
-  known: string[]
-  feedback: string
-}
-
-// Mock skill taxonomy
-const SKILL_TAXONOMY = {
-  "Web Development": [
-    "HTML",
-    "CSS",
-    "JavaScript",
-    "TypeScript",
-    "React",
-    "Vue.js",
-    "Angular",
-    "Next.js",
-    "Node.js",
-    "Express.js",
-    "REST APIs",
-    "GraphQL",
-    "MongoDB",
-    "PostgreSQL",
-    "Git",
-    "Testing",
-    "Responsive Design",
-    "Web Performance",
-  ],
-  "Backend Development": [
-    "Node.js",
-    "Python",
-    "Java",
-    "C#",
-    "Express.js",
-    "Django",
-    "Flask",
-    "Spring Boot",
-    "REST APIs",
-    "GraphQL",
-    "PostgreSQL",
-    "MongoDB",
-    "Redis",
-    "Docker",
-    "AWS",
-    "System Design",
-    "Testing",
-  ],
-  "Data Science": [
-    "Python",
-    "R",
-    "SQL",
-    "Pandas",
-    "NumPy",
-    "Matplotlib",
-    "Seaborn",
-    "Jupyter",
-    "Machine Learning",
-    "Statistics",
-    "Data Visualization",
-    "TensorFlow",
-    "PyTorch",
-    "Scikit-learn",
-  ],
-  "Mobile Development": [
-    "React Native",
-    "Flutter",
-    "Swift",
-    "Kotlin",
-    "JavaScript",
-    "TypeScript",
-    "REST APIs",
-    "Mobile UI/UX",
-    "App Store Deployment",
-    "Testing",
-  ],
-  "Data Structures & Algorithms": [
-    "Data Structures",
-    "Algorithms",
-    "Time Complexity",
-    "Space Complexity",
-    "Arrays",
-    "Linked Lists",
-    "Trees",
-    "Graphs",
-    "Sorting",
-    "Searching",
-    "Dynamic Programming",
-    "Greedy Algorithms",
-    "Recursion",
-    "Backtracking",
-  ],
+  success: boolean
+  user: string
+  analysis: CategoryAnalysis[]
+  summary: string
+  categories_analyzed: number
+  user_goal: string
 }
 
 export default function ResultsPage() {
   const router = useRouter()
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string>("")
 
   useEffect(() => {
-    const userSkills = localStorage.getItem("user-skills")
-    const userIntent = localStorage.getItem("user-intent")
+    fetchSkillGapAnalysis()
+  }, [])
 
-    if (!userSkills || !userIntent) {
-      router.push("/")
-      return
-    }
-
-    const skills = JSON.parse(userSkills)
-    const intent = userIntent
-    analyzeSkills({ skills, intent })
-  }, [router])
-
-  const analyzeSkills = async (userData: { skills: UserSkill[]; intent: string }) => {
+  const fetchSkillGapAnalysis = async () => {
     setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 2000))
+    setError("")
 
-    const intent = userData.intent.toLowerCase()
-    let category = "Web Development"
-
-    if (intent.includes("dsa") || intent.includes("data structures") || intent.includes("algorithms")) {
-      category = "Data Structures & Algorithms"
-    } else if (intent.includes("backend") || intent.includes("server") || intent.includes("api")) {
-      category = "Backend Development"
-    } else if (intent.includes("data") || intent.includes("machine learning") || intent.includes("ai")) {
-      category = "Data Science"
-    } else if (
-      intent.includes("mobile") ||
-      intent.includes("app") ||
-      intent.includes("ios") ||
-      intent.includes("android")
-    ) {
-      category = "Mobile Development"
-    }
-
-    const requiredSkills = SKILL_TAXONOMY[category as keyof typeof SKILL_TAXONOMY] || SKILL_TAXONOMY["Web Development"]
-    const userSkillNames = userData.skills.map((s) => s.name)
-    const userSkillLevels = userData.skills.reduce(
-      (acc, s) => ({ ...acc, [s.name]: s.level }),
-      {} as Record<string, string>,
-    )
-
-    const gaps: SkillGap[] = []
-    const known: string[] = []
-
-    requiredSkills.forEach((skill) => {
-      if (userSkillNames.includes(skill)) {
-        const level = userSkillLevels[skill]
-        if (level === "beginner") {
-          gaps.push({ skill, status: "weak", level })
-        } else {
-          known.push(skill)
-        }
-      } else {
-        gaps.push({ skill, status: "missing" })
+    try {
+      // Get profile data from localStorage
+      const profileData = localStorage.getItem("profile-data")
+      if (!profileData) {
+        router.push("/upload")
+        return
       }
-    })
 
-    const feedback = generateFeedback(userData.intent, category, gaps, known)
+      const profile = JSON.parse(profileData)
+      
+      // Use environment variable or fallback to dummy URL
+      const skillGapApiUrl = process.env.NEXT_PUBLIC_SKILL_GAP_API_URL || 'https://api.example.com/find-skill-gaps'
+      
+      try {
+        if (!profile.name) {
+          setError("Profile data is incomplete. Please upload your resume again.")
+          return
+        }
 
-    setAnalysis({
-      goal: userData.intent,
-      category,
-      gaps,
-      known,
-      feedback,
-    })
+      // Send request to skill gap analysis API
+      const response = await apiFetch('https://api.aahil-khan.tech/analyze-skill-gaps', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: profile.name }),
+      })
 
-    // Store analysis results for dashboard
-    localStorage.setItem(
-      "skill-analysis",
-      JSON.stringify({
-        goal: userData.intent,
-        category,
-        gaps,
-        known,
-        feedback,
-      }),
-    )
+        if (!response.ok) {
+          throw new Error('Failed to analyze skill gaps')
+        }
 
-    setIsLoading(false)
+        const data: AnalysisResult = await response.json()
+        setAnalysis(data)
+      } catch (apiError) {
+        console.warn('API call failed, using mock data:', apiError)
+        
+        // Fallback to mock analysis data if API fails
+        const mockAnalysis: AnalysisResult = {
+          success: true,
+          user: profile.name || "Demo User",
+          analysis: [
+            {
+              detected_category: "Web Development",
+              matched_taxonomy_category: "Web Development",
+              confidence: 0.85,
+              similarity: 1,
+              skills: {
+                gaps: [
+                  {
+                    name: "Next.js",
+                    description: "Building full-stack React apps with routing, API routes, and SSR/SSG.",
+                    priority: "high"
+                  },
+                  {
+                    name: "TypeScript",
+                    description: "Adding type safety to JavaScript applications.",
+                    priority: "medium"
+                  }
+                ],
+                present: [
+                  {
+                    name: "JavaScript",
+                    user_level: "intermediate",
+                    description: "Writing interactive frontend logic and working with the DOM.",
+                    recommendation: "Strong foundation - continue building on this"
+                  },
+                  {
+                    name: "React",
+                    user_level: "intermediate", 
+                    description: "Creating dynamic user interfaces using components and hooks.",
+                    recommendation: "Good understanding - ready for advanced concepts"
+                  }
+                ],
+                needs_improvement: [
+                  {
+                    name: "CSS",
+                    user_level: "beginner",
+                    description: "Styling web pages with responsive design and modern CSS features.",
+                    recommendation: "Focus on learning flexbox, grid, and responsive design"
+                  }
+                ]
+              }
+            }
+          ],
+          summary: `Based on your goal to "${profile.goal || 'become a full-stack developer'}", here's your personalized learning path:
+
+<strong>Your Strengths:</strong>
+You have a solid foundation in JavaScript and React, which are core technologies for modern web development.
+
+<strong>Priority Areas:</strong>
+• <strong>Next.js</strong> - Learn this popular React framework to build full-stack applications
+• <strong>TypeScript</strong> - Add type safety to make your code more robust
+
+<strong>Skills to Improve:</strong>
+• <strong>CSS</strong> - Strengthen your styling skills with modern CSS techniques
+
+<strong>Recommended Learning Path:</strong>
+1. Practice more CSS with flexbox and grid layouts
+2. Learn TypeScript fundamentals
+3. Build a project with Next.js
+4. Focus on responsive design principles
+
+This learning path will help you achieve your goal of becoming a well-rounded web developer.`,
+          categories_analyzed: 1,
+          user_goal: profile.goal || "Become a full-stack web developer"
+        }
+        
+        setAnalysis(mockAnalysis)
+      }
+    } catch (error: any) {
+      console.error('Error fetching skill gap analysis:', error)
+      setError(error.message || 'An error occurred while analyzing your skills')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  const generateFeedback = (goal: string, category: string, gaps: SkillGap[], known: string[]) => {
-    const missingSkills = gaps.filter((g) => g.status === "missing").map((g) => g.skill)
-    const weakSkills = gaps.filter((g) => g.status === "weak").map((g) => g.skill)
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'high':
+        return 'bg-red-100 text-red-800 border-red-200'
+      case 'medium':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+      case 'low':
+        return 'bg-green-100 text-green-800 border-green-200'
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200'
+    }
+  }
 
-    return `Based on your goal to "${goal}", I can see you're targeting ${category}. 
-
-**Your Strengths:**
-You have a solid foundation with ${known.length > 0 ? known.slice(0, 3).join(", ") : "some core skills"}${known.length > 3 ? ` and ${known.length - 3} other skills` : ""}. This gives you a great starting point!
-
-**Areas to Focus On:**
-${
-  missingSkills.length > 0
-    ? `
-**Missing Skills (Priority):**
-${missingSkills
-  .slice(0, 3)
-  .map((skill) => `• **${skill}** - Essential for ${category.toLowerCase()}`)
-  .join("\n")}
-`
-    : ""
-}
-${
-  weakSkills.length > 0
-    ? `
-**Skills to Strengthen:**
-${weakSkills.map((skill) => `• **${skill}** - You have the basics, now deepen your knowledge`).join("\n")}
-`
-    : ""
-}
-
-**Recommended Learning Path:**
-1. Start with ${missingSkills[0] || weakSkills[0]} - it's fundamental to your goal
-2. Build a project incorporating ${missingSkills.slice(0, 2).join(" and ")}
-3. Practice with real-world scenarios and gradually add complexity
-
-**Next Steps:**
-Consider building a portfolio project that combines your existing strengths with these new skills. This will give you practical experience and something to showcase to employers.`
+  const getLevelColor = (level: string) => {
+    switch (level) {
+      case 'advanced':
+        return 'bg-green-100 text-green-800'
+      case 'intermediate':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'beginner':
+        return 'bg-red-100 text-red-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
+    }
   }
 
   if (isLoading) {
     return (
       <div className="min-h-screen skillmap-bg flex items-center justify-center">
-        <Card className="w-96 shadow-lg border-0 rounded-2xl">
-          <CardContent className="p-8 text-center">
-            <RefreshCw className="h-12 w-12 text-blue-600 mx-auto mb-4 animate-spin" />
-            <h3 className="text-xl font-semibold mb-2 text-gray-900">Analyzing Your Skills</h3>
-            <p className="text-gray-600 mb-4">
-              Our AI is processing your profile and generating personalized recommendations...
+        <Card className="w-full max-w-md mx-4">
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <Brain className="h-16 w-16 text-blue-600 animate-pulse mb-4" />
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Analyzing Your Skills</h2>
+            <p className="text-gray-600 text-center mb-4">
+              We're comparing your skills with industry standards and your learning goals...
             </p>
-            <Progress value={75} className="w-full bg-gray-200" />
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="bg-blue-600 h-2 rounded-full animate-pulse" style={{ width: "70%" }}></div>
+            </div>
           </CardContent>
         </Card>
       </div>
     )
   }
 
-  if (!analysis) {
+  if (error) {
     return (
-      <div className="min-h-screen skillmap-bg flex items-center justify-center">
-        <Card className="w-96 shadow-lg border-0 rounded-2xl">
-          <CardContent className="p-8 text-center">
-            <X className="h-12 w-12 text-red-600 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold mb-2 text-gray-900">Something went wrong</h3>
-            <p className="text-gray-600 mb-4">We couldn't analyze your skills. Please try again.</p>
-            <Button asChild className="skillmap-button text-white rounded-full">
-              <Link href="/onboarding">Start Over</Link>
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen skillmap-bg">
+        <header className="skillmap-header text-white">
+          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+            <Link href="/" className="text-2xl font-bold">skillMap</Link>
+          </div>
+        </header>
+        <div className="container mx-auto px-4 py-16 max-w-2xl">
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <AlertTriangle className="h-16 w-16 text-red-500 mb-4" />
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">Analysis Failed</h2>
+              <p className="text-gray-600 text-center mb-4">{error}</p>
+              <Button onClick={() => router.push("/intent")} variant="outline">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Go Back
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     )
   }
+
+  if (!analysis) return null
 
   return (
     <div className="min-h-screen skillmap-bg">
@@ -301,163 +269,142 @@ Consider building a portfolio project that combines your existing strengths with
       </header>
 
       <div className="container mx-auto px-4 py-8 max-w-6xl">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Your Personalized SkillMap</h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-2">
-            Based on your goal: <span className="font-semibold text-blue-600">"{analysis.goal}"</span>
-          </p>
-          <Badge variant="secondary" className="bg-gray-200 text-gray-800 rounded-full px-4 py-1">
-            Category: {analysis.category}
-          </Badge>
+        {/* Header Section */}
+        <div className="text-center mb-8 animate-fadeInUp">
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+            Your Personalized Skill Analysis
+          </h1>
+          <p className="text-gray-600">Goal: {analysis.user_goal}</p>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Left Side: Skill Breakdown */}
-          <Card className="shadow-lg border-0 rounded-2xl card-hover animate-slideInLeft">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2 text-gray-900">
-                <Brain className="h-6 w-6 text-blue-600" />
-                <span>Skill Analysis</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Known Skills */}
-              {analysis.known.length > 0 && (
-                <div className="animate-slideInLeft">
-                  <h3 className="font-semibold text-green-700 mb-3 flex items-center">
-                    <CheckCircle className="h-5 w-5 mr-2 animate-bounce-slow" />
-                    Strong Skills ({analysis.known.length})
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {analysis.known.map((skill, index) => (
-                      <Badge
-                        key={skill}
-                        className={`bg-green-100 text-green-800 border-green-200 rounded-full hover:scale-105 transition-transform duration-300 animate-fadeIn animate-delay-${Math.min(index * 50, 500)}`}
-                      >
-                        {skill}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
+        {/* Analysis Overview */}
+        {analysis.analysis.map((categoryAnalysis, index) => (
+          <div key={index} className="mb-8">
+            <Card className="mb-6 animate-slideInLeft">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span>{categoryAnalysis.detected_category} Analysis</span>
+                  <Badge variant="secondary">
+                    {Math.round(categoryAnalysis.confidence * 100)}% Match
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+            </Card>
 
-              {/* Weak Skills */}
-              {analysis.gaps.filter((g) => g.status === "weak").length > 0 && (
-                <div>
-                  <h3 className="font-semibold text-yellow-700 mb-3 flex items-center">
-                    <AlertTriangle className="h-5 w-5 mr-2" />
-                    Skills to Strengthen ({analysis.gaps.filter((g) => g.status === "weak").length})
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {analysis.gaps
-                      .filter((g) => g.status === "weak")
-                      .map((gap) => (
-                        <Badge
-                          key={gap.skill}
-                          variant="outline"
-                          className="bg-yellow-50 text-yellow-800 border-yellow-200 rounded-full"
-                        >
-                          {gap.skill} ({gap.level})
-                        </Badge>
-                      ))}
-                  </div>
-                </div>
-              )}
+            <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-3">
+              {/* Skills Gaps */}
+              <Card className="animate-slideInUp animate-delay-200">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-red-700">
+                    <AlertTriangle className="mr-2 h-5 w-5" />
+                    Missing Skills ({categoryAnalysis.skills.gaps.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {categoryAnalysis.skills.gaps.map((skill, skillIndex) => (
+                    <div key={skillIndex} className="p-3 border rounded-lg bg-red-50">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium text-gray-900">{skill.name}</h4>
+                        {skill.priority && (
+                          <Badge className={getPriorityColor(skill.priority)}>
+                            {skill.priority} priority
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-600">{skill.description}</p>
+                    </div>
+                  ))}
+                  {categoryAnalysis.skills.gaps.length === 0 && (
+                    <p className="text-gray-500 text-center py-4">No skill gaps identified!</p>
+                  )}
+                </CardContent>
+              </Card>
 
-              {/* Missing Skills */}
-              {analysis.gaps.filter((g) => g.status === "missing").length > 0 && (
-                <div>
-                  <h3 className="font-semibold text-red-700 mb-3 flex items-center">
-                    <X className="h-5 w-5 mr-2" />
-                    Missing Skills ({analysis.gaps.filter((g) => g.status === "missing").length})
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {analysis.gaps
-                      .filter((g) => g.status === "missing")
-                      .map((gap) => (
-                        <Badge
-                          key={gap.skill}
-                          variant="outline"
-                          className="bg-red-50 text-red-800 border-red-200 rounded-full"
-                        >
-                          {gap.skill}
-                        </Badge>
-                      ))}
-                  </div>
-                </div>
-              )}
+              {/* Skills to Improve */}
+              <Card className="animate-slideInUp animate-delay-400">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-yellow-700">
+                    <TrendingUp className="mr-2 h-5 w-5" />
+                    Needs Improvement ({categoryAnalysis.skills.needs_improvement.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {categoryAnalysis.skills.needs_improvement.map((skill, skillIndex) => (
+                    <div key={skillIndex} className="p-3 border rounded-lg bg-yellow-50">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium text-gray-900">{skill.name}</h4>
+                        {skill.user_level && (
+                          <Badge className={getLevelColor(skill.user_level)}>
+                            {skill.user_level}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-600 mb-2">{skill.description}</p>
+                      {skill.recommendation && (
+                        <p className="text-xs text-blue-600 font-medium">{skill.recommendation}</p>
+                      )}
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
 
-              {/* Progress Overview */}
-              <div className="pt-4 border-t">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-gray-900">Skill Coverage</span>
-                  <span className="text-sm text-gray-600">
-                    {Math.round((analysis.known.length / (analysis.known.length + analysis.gaps.length)) * 100)}%
-                  </span>
-                </div>
-                <Progress
-                  value={(analysis.known.length / (analysis.known.length + analysis.gaps.length)) * 100}
-                  className="h-3 bg-gray-200 progress-bar"
-                />
-              </div>
-            </CardContent>
-          </Card>
+              {/* Strong Skills */}
+              <Card className="animate-slideInUp animate-delay-600">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-green-700">
+                    <CheckCircle className="mr-2 h-5 w-5" />
+                    Strong Skills ({categoryAnalysis.skills.present.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {categoryAnalysis.skills.present.map((skill, skillIndex) => (
+                    <div key={skillIndex} className="p-3 border rounded-lg bg-green-50">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium text-gray-900">{skill.name}</h4>
+                        {skill.user_level && (
+                          <Badge className={getLevelColor(skill.user_level)}>
+                            {skill.user_level}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-600 mb-2">{skill.description}</p>
+                      {skill.recommendation && (
+                        <p className="text-xs text-green-600 font-medium">{skill.recommendation}</p>
+                      )}
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        ))}
 
-          {/* Right Side: AI Feedback */}
-          <Card className="shadow-lg border-0 rounded-2xl card-hover animate-slideInRight">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2 text-gray-900">
-                <Brain className="h-6 w-6 text-purple-600" />
-                <span>AI Recommendations</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="prose prose-sm max-w-none">
-                {analysis.feedback.split("\n").map((paragraph, index) => {
-                  if (paragraph.startsWith("**") && paragraph.endsWith(":**")) {
-                    return (
-                      <h4 key={index} className="font-semibold text-gray-900 mt-4 mb-2">
-                        {paragraph.replace(/\*\*/g, "")}
-                      </h4>
-                    )
-                  } else if (paragraph.startsWith("•")) {
-                    return (
-                      <p key={index} className="ml-4 mb-1 text-gray-700">
-                        {paragraph.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>").replace(/•/, "•")}
-                      </p>
-                    )
-                  } else if (paragraph.trim()) {
-                    return (
-                      <p key={index} className="mb-3 text-gray-700 leading-relaxed">
-                        {paragraph.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")}
-                      </p>
-                    )
-                  }
-                  return null
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Summary Section */}
+        <Card className="animate-fadeInUp animate-delay-800">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Brain className="mr-2 h-6 w-6 text-blue-600" />
+              Personalized Learning Recommendations
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div 
+              className="prose prose-sm max-w-none text-gray-700"
+              dangerouslySetInnerHTML={{ __html: analysis.summary }}
+            />
+          </CardContent>
+        </Card>
 
         {/* Action Buttons */}
-        <div className="text-center mt-8 space-x-4 animate-fadeInUp animate-delay-400">
-          <Button asChild variant="outline" className="rounded-full px-6 bg-transparent hover-lift">
-            <Link href="/onboarding">Update My Profile</Link>
-          </Button>
-          <Button asChild className="skillmap-button text-white rounded-full px-6 hover-lift">
-            <Link href="/dashboard">
-              <BarChart3 className="mr-2 h-4 w-4" />
-              View Dashboard & Roadmap
+        <div className="flex justify-center space-x-4 mt-8 animate-fadeInUp animate-delay-1000">
+          <Button variant="outline" asChild>
+            <Link href="/intent">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Change Goal
             </Link>
           </Button>
-          <Button
-            onClick={() => window.print()}
-            variant="outline"
-            className="rounded-full px-6 bg-transparent hover-lift"
-          >
-            Save Results
+          <Button onClick={() => window.print()} className="skillmap-button text-white">
+            Save Report
           </Button>
         </div>
       </div>

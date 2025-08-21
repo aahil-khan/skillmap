@@ -3,13 +3,18 @@
 import type React from "react"
 
 import { useState, useRef, useEffect } from "react"
+import { useAuthRedirect } from "@/hooks/useAuthRedirect"
+import { apiFetch } from "@/lib/utils"
+import { testAuth } from "@/lib/test-auth"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Menu, User, Upload, FileText, ArrowRight, ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import Navbar from "@/components/Navbar"
 
 export default function UploadPage() {
+  useAuthRedirect()
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
@@ -54,57 +59,106 @@ export default function UploadPage() {
 
     setIsUploading(true)
 
-    // Simulate file upload and processing
-    await new Promise((resolve) => setTimeout(resolve, 3000))
+    try {
+      // Debug: Check if JWT token exists
+      const token = localStorage.getItem('sb-jwt')
+      console.log('JWT token for upload:', token ? 'exists' : 'missing')
+      console.log('Token preview:', token ? token.substring(0, 20) + '...' : 'no token')
 
-    // Mock extracted skills
-    const extractedSkills = [
-      "JavaScript",
-      "React",
-      "Node.js",
-      "Python",
-      "SQL",
-      "Git",
-      "HTML",
-      "CSS",
-      "MongoDB",
-      "Express.js",
-    ]
+      // Create FormData to send the file
+      const formData = new FormData()
+      formData.append('resume', file)
 
-    localStorage.setItem("extracted-skills", JSON.stringify(extractedSkills))
-    router.push("/skills")
+      // Send file to backend server for processing
+      const response = await apiFetch('https://api.aahil-khan.tech/upload-resume', {
+        method: 'POST',
+        body: formData,
+      })
+
+      console.log('Upload response status:', response.status)
+      console.log('Upload response ok:', response.ok)
+
+      if (!response.ok) {
+        // Try to get the error message from the response
+        let errorMessage = 'Failed to process resume'
+        try {
+          const errorData = await response.json()
+          console.log('Error response:', errorData)
+          errorMessage = errorData.error || errorData.message || errorMessage
+        } catch (e) {
+          console.log('Could not parse error response as JSON')
+        }
+        throw new Error(`${errorMessage} (Status: ${response.status})`)
+      }
+
+      const data = await response.json()
+
+      localStorage.setItem("profile-data", JSON.stringify(data.profile))
+
+      console.log('Profile data received:', data)
+
+      // Extract technical skills from the response
+      const extractedSkills: Array<{ category: string; skills: string[] }> = []
+      
+      // Handle the double-nested profile structure
+      const technicalSkills = data.profile?.technical_skills || data.technical_skills
+
+      if (technicalSkills) {
+        technicalSkills.forEach((category: any) => {
+          console.log('Processing category:', category)
+          if (category.category && category.skills) {
+            extractedSkills.push({
+              category: category.category,
+              skills: category.skills
+            })
+          }
+        })
+      } else {
+        console.log('No technical skills found in response')
+      }
+
+      console.log('Extracted skills:', extractedSkills)
+      localStorage.setItem("extracted-skills", JSON.stringify(extractedSkills))
+      router.push("/skills")
+      
+    } catch (error) {
+      console.error('Error uploading resume:', error)
+      
+      // Fallback to mock data if API fails
+      const mockSkills = [
+        {
+          category: "Web Development",
+          skills: ["HTML", "CSS", "JavaScript", "React", "Node.js", "Express.js"]
+        },
+        {
+          category: "Database Systems", 
+          skills: ["PostgreSQL", "MongoDB", "Redis"]
+        },
+        {
+          category: "Programming Languages",
+          skills: ["Python", "TypeScript", "Java"]
+        }
+      ]
+      
+      const mockProfile = {
+        name: "Demo User",
+        email: "demo@example.com",
+        profile: {
+          technical_skills: mockSkills
+        }
+      }
+      
+      localStorage.setItem("extracted-skills", JSON.stringify(mockSkills))
+      localStorage.setItem("profile-data", JSON.stringify(mockProfile))
+      router.push("/skills")
+    } finally {
+      setIsUploading(false)
+    }
   }
 
   return (
     <div className="min-h-screen skillmap-bg">
-      {/* Header */}
-      <header className="skillmap-header text-white animate-fadeInDown">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-white hover:bg-white/20 transition-all duration-300 hover:scale-105"
-            >
-              <Menu className="h-5 w-5 transition-transform duration-300 hover:rotate-90" />
-              <span className="ml-2 text-sm">explore</span>
-            </Button>
-          </div>
-
-          <Link href="/" className="text-2xl font-bold hover:scale-105 transition-transform duration-300">
-            skillMap
-          </Link>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-white hover:bg-white/20 transition-all duration-300 hover:scale-105"
-          >
-            <User className="h-5 w-5" />
-            <span className="ml-2 text-sm">login</span>
-          </Button>
-        </div>
-      </header>
+      <Navbar />
 
       <div className="container mx-auto px-4 py-16 max-w-2xl">
         <Card
@@ -117,6 +171,7 @@ export default function UploadPage() {
             </p>
           </CardHeader>
           <CardContent className="space-y-8 animate-fadeInUp animate-delay-300">
+            
             {/* Upload Area */}
             <div
               className={`border-2 border-dashed rounded-lg p-12 text-center transition-all duration-300 cursor-pointer hover-lift ${
@@ -162,7 +217,7 @@ export default function UploadPage() {
             {/* Action Buttons */}
             <div className="flex justify-between pt-6 animate-fadeInUp animate-delay-400">
               <Button variant="outline" asChild className="hover-lift bg-transparent">
-                <Link href="/auth">
+                <Link href="/">
                   <ArrowLeft className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:-translate-x-1" />
                   Back
                 </Link>

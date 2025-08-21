@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useAuthRedirect } from "@/hooks/useAuthRedirect"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,6 +10,8 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Menu, User, ArrowLeft, ArrowRight, Target } from "lucide-react"
 import Link from "next/link"
+import Navbar from "@/components/Navbar"
+import { apiFetch } from "@/lib/utils"
 
 const EXAMPLE_INTENTS = [
   "I want to learn Data Structures and Algorithms",
@@ -20,6 +23,7 @@ const EXAMPLE_INTENTS = [
 ]
 
 export default function IntentPage() {
+  useAuthRedirect()
   const router = useRouter()
   const [intent, setIntent] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -28,12 +32,86 @@ export default function IntentPage() {
     if (!intent.trim()) return
 
     setIsLoading(true)
-    localStorage.setItem("user-intent", intent)
+    
+    try {
+      // Send intent to backend to convert to standalone question
+      const response = await fetch('https://api.aahil-khan.tech/convert-to-standalone', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ goal: intent.trim() }),
+      })
 
-    // Simulate processing
-    await new Promise((resolve) => setTimeout(resolve, 2000))
+      if (!response.ok) {
+        throw new Error('Failed to process intent')
+      }
 
-    router.push("/results")
+      const data = await response.json()
+      const refinedIntent = data.goalResponse || data.standalone || intent.trim()
+
+      // Get stored profile data from localStorage
+      const storedProfile = localStorage.getItem("profile-data")
+      let profileData = {}
+      
+      if (storedProfile) {
+        profileData = JSON.parse(storedProfile)
+      }
+
+      // Add goal property with refined intent
+      const updatedProfile = {
+        ...profileData,
+        goal: refinedIntent
+      }
+
+      // Handle response if needed
+      try {
+        const userResponse = await apiFetch('https://api.aahil-khan.tech/user-profile', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updatedProfile),
+        })
+
+        if (userResponse.ok) {
+          console.log('Profile sent to backend successfully')
+        }
+      } catch (profileError) {
+        console.warn('Failed to send profile to backend:', profileError)
+      }
+
+      // Save updated profile back to localStorage
+      localStorage.setItem("profile-data", JSON.stringify(updatedProfile))
+      localStorage.setItem("user-intent", refinedIntent)
+
+      console.log('Profile updated with goal:', updatedProfile)
+      
+      router.push("/results")
+      
+    } catch (apiError) {
+      console.warn('API call failed, using original intent:', apiError)
+      
+      // Fallback: use original intent if API fails
+      const storedProfile = localStorage.getItem("profile-data")
+      let profileData = {}
+      
+      if (storedProfile) {
+        profileData = JSON.parse(storedProfile)
+      }
+
+      const updatedProfile = {
+        ...profileData,
+        goal: intent.trim()
+      }
+
+      localStorage.setItem("profile-data", JSON.stringify(updatedProfile))
+      localStorage.setItem("user-intent", intent.trim())
+      
+      router.push("/results")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const selectExample = (example: string) => {
@@ -42,26 +120,7 @@ export default function IntentPage() {
 
   return (
     <div className="min-h-screen skillmap-bg">
-      {/* Header */}
-      <header className="skillmap-header text-white animate-fadeInDown">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
-              <Menu className="h-5 w-5" />
-              <span className="ml-2 text-sm">explore</span>
-            </Button>
-          </div>
-
-          <Link href="/" className="text-2xl font-bold">
-            skillMap
-          </Link>
-
-          <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
-            <User className="h-5 w-5" />
-            <span className="ml-2 text-sm">login</span>
-          </Button>
-        </div>
-      </header>
+      <Navbar />
 
       <div className="container mx-auto px-4 py-16 max-w-3xl">
         <Card className="shadow-lg border-0 card-hover animate-scaleIn">
