@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { supabase } from "@/lib/supabase"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -376,21 +377,45 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
-    // Check if user is logged in
-    const userData = localStorage.getItem("skillmap-user")
-    if (!userData) {
-      router.push("/auth")
-      return
+    // Check if user is logged in using Supabase session
+    const checkAuth = async () => {
+      const { data: { session }, error } = await supabase.auth.getSession()
+      
+      if (!session?.user) {
+        router.push("/auth")
+        return
+      }
+
+      // Get user details from either custom table or auth data
+      let userData = null
+      const { data: customUserData } = await supabase
+        .from('users')
+        .select('email, full_name')
+        .eq('id', session.user.id)
+        .single()
+
+      if (customUserData) {
+        userData = {
+          name: customUserData.full_name,
+          email: customUserData.email
+        }
+      } else {
+        userData = {
+          name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || "User",
+          email: session.user.email || ""
+        }
+      }
+
+      setUserProfile({
+        name: userData.name,
+        email: userData.email,
+        resumeUploadDate: new Date().toLocaleDateString(),
+      })
     }
 
-    const user = JSON.parse(userData)
-    setUserProfile({
-      name: user.name || "John Doe",
-      email: user.email,
-      resumeUploadDate: new Date().toLocaleDateString(),
-    })
+    checkAuth()
 
-    // Get analysis data
+    // Get analysis data from localStorage (if any)
     const analysis = localStorage.getItem("skill-analysis")
     if (analysis) {
       setAnalysisData(JSON.parse(analysis))
@@ -518,18 +543,23 @@ export default function DashboardPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => {
+                        onClick={async () => {
                           if (isEditingProfile) {
-                            // Save changes
+                            // Save changes to Supabase
                             if (editedProfile) {
                               setUserProfile(editedProfile)
-                              localStorage.setItem(
-                                "skillmap-user",
-                                JSON.stringify({
-                                  email: editedProfile.email,
-                                  name: editedProfile.name,
-                                }),
-                              )
+                              
+                              // Update in Supabase
+                              const { data: { session } } = await supabase.auth.getSession()
+                              if (session?.user) {
+                                await supabase
+                                  .from('users')
+                                  .upsert({
+                                    id: session.user.id,
+                                    email: editedProfile.email,
+                                    full_name: editedProfile.name
+                                  })
+                              }
                             }
                           } else {
                             setEditedProfile(userProfile)

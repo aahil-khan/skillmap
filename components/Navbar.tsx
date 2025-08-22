@@ -146,6 +146,17 @@ export default function Navbar({ showExploreMenu, setShowExploreMenu }: NavbarPr
                           </div>
                           <hr className="my-3" />
                           <Button
+                            asChild
+                            variant="outline"
+                            size="sm"
+                            className="w-full mb-2 hover:bg-blue-50 hover:border-blue-300"
+                          >
+                            <Link href="/dashboard" className="flex items-center">
+                              <User className="h-4 w-4 mr-2" />
+                              Dashboard
+                            </Link>
+                          </Button>
+                          <Button
                             onClick={handleLogout}
                             variant="outline"
                             size="sm"

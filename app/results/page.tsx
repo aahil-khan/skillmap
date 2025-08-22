@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { Brain, CheckCircle, AlertTriangle, TrendingUp, Menu, User, ArrowLeft } from "lucide-react"
+import { Brain, CheckCircle, AlertTriangle, TrendingUp, Menu, User, ArrowLeft, ArrowRight } from "lucide-react"
 import { apiFetch } from "@/lib/utils"
 import Link from "next/link"
 
@@ -403,7 +403,13 @@ This learning path will help you achieve your goal of becoming a well-rounded we
               Change Goal
             </Link>
           </Button>
-          <Button onClick={() => window.print()} className="skillmap-button text-white">
+          <Button asChild className="skillmap-button text-white">
+            <Link href="/dashboard">
+              <ArrowRight className="mr-2 h-4 w-4" />
+              Go to Dashboard
+            </Link>
+          </Button>
+          <Button onClick={() => window.print()} variant="outline">
             Save Report
           </Button>
         </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -16,12 +17,19 @@ export default function HomePage() {
     setIsLoaded(true)
   }, [])
 
-  const handleTrySkillMap = () => {
-    // Check if user is authenticated
-    const token = typeof window !== 'undefined' ? localStorage.getItem('sb-jwt') : null
-    if (token) {
-      // User is authenticated, redirect to upload
-      window.location.href = '/upload'
+  const handleTrySkillMap = async () => {
+    // Check if user is authenticated using Supabase
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.user) {
+      // User is authenticated, check if they have profile data
+      const profileData = localStorage.getItem('profile-data')
+      if (profileData) {
+        // User has already uploaded a resume, go to dashboard
+        window.location.href = '/dashboard'
+      } else {
+        // User is authenticated but hasn't uploaded resume, go to upload
+        window.location.href = '/upload'
+      }
     } else {
       // User is not authenticated, redirect to auth
       window.location.href = '/auth'
