@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { apiFetch } from "@/lib/utils"
 
 
 interface UserProfile {
@@ -74,6 +75,9 @@ export default function DashboardPage() {
   const [analysisData, setAnalysisData] = useState<any>(null)
   const [isEditingProfile, setIsEditingProfile] = useState<boolean>(false)
   const [editedProfile, setEditedProfile] = useState<UserProfile | null>(null)
+  const [targetScore, setTargetScore] = useState<number | null>(null)
+  const [scoreError, setScoreError] = useState<boolean>(false)
+  const [isFetchingScore, setIsFetchingScore] = useState<boolean>(false)
 
   // Mock data - in real app, this would come from API
   const skillCategories: SkillCategory[] = [
@@ -377,6 +381,8 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
+    let intervalId: NodeJS.Timeout | null = null
+
     // Check if user is logged in using Supabase session
     const checkAuth = async () => {
       const { data: { session }, error } = await supabase.auth.getSession()
@@ -413,29 +419,103 @@ export default function DashboardPage() {
       })
     }
 
-    checkAuth()
-
-    // Get analysis data from localStorage (if any)
-    const analysis = localStorage.getItem("skill-analysis")
-    if (analysis) {
-      setAnalysisData(JSON.parse(analysis))
+    const fetchATSScore = async () => {
+      setIsFetchingScore(true)
+      setScoreError(false)
+      setResumeScore(0) // Reset score when fetching
+      try {
+        const response = await apiFetch('https://api.aahil-khan.tech/ats-score')
+        const data = await response.json()
+        console.log(data)
+        if (data.success && data.atsScore && data.atsScore.ats_score) {
+          setTargetScore(data.atsScore.ats_score)
+          setScoreError(false)
+        } else {
+          setScoreError(true)
+          setTargetScore(null)
+        }
+      } catch (error) {
+        console.error('Failed to fetch ATS score:', error)
+        setScoreError(true)
+        setTargetScore(null)
+      } finally {
+        setIsFetchingScore(false)
+      }
     }
 
-    // Animate resume score
-    let score = 0
-    const targetScore = 78
-    const interval = setInterval(() => {
-      score += 2
-      setResumeScore(score)
-      if (score >= targetScore) {
-        clearInterval(interval)
+    const initializePage = async () => {
+      await checkAuth()
+      
+      // Get analysis data from localStorage (if any)
+      const analysis = localStorage.getItem("skill-analysis")
+      if (analysis) {
+        setAnalysisData(JSON.parse(analysis))
       }
-    }, 50)
 
-    setIsLoading(false)
+      // Fetch ATS score - this will set isFetchingScore states
+      await fetchATSScore()
+      setIsLoading(false)
+    }
 
-    return () => clearInterval(interval)
+    initializePage()
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId)
+        intervalId = null
+      }
+    }
   }, [router])
+
+  // Separate effect to handle score animation when targetScore changes
+  useEffect(() => {
+    if (targetScore !== null && !isLoading && !isFetchingScore) {
+      let intervalId: NodeJS.Timeout | null = null
+      let score = 0
+      
+      intervalId = setInterval(() => {
+        score += 2
+        setResumeScore(score)
+        if (score >= targetScore) {
+          setResumeScore(targetScore)
+          if (intervalId) {
+            clearInterval(intervalId)
+            intervalId = null
+          }
+        }
+      }, 50)
+
+      return () => {
+        if (intervalId) {
+          clearInterval(intervalId)
+        }
+      }
+    }
+  }, [targetScore, isLoading, isFetchingScore])
+
+  const retryFetchScore = async () => {
+    setIsFetchingScore(true)
+    setScoreError(false)
+    setResumeScore(0) // Reset score when retrying
+    try {
+      const response = await apiFetch('https://api.aahil-khan.tech/ats-score')
+      const data = await response.json()
+      console.log(data)
+      if (data.success && data.atsScore && data.atsScore.ats_score) {
+        setTargetScore(data.atsScore.ats_score)
+        setScoreError(false)
+      } else {
+        setScoreError(true)
+        setTargetScore(null)
+      }
+    } catch (error) {
+      console.error('Failed to fetch ATS score:', error)
+      setScoreError(true)
+      setTargetScore(null)
+    } finally {
+      setIsFetchingScore(false)
+    }
+  }
 
   const exportToPDF = () => {
     // Mock PDF export
@@ -909,32 +989,57 @@ export default function DashboardPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="text-center">
-                    <div className="relative w-32 h-32 mx-auto mb-4">
-                      <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 120 120">
-                        <circle cx="60" cy="60" r="50" stroke="#e5e7eb" strokeWidth="8" fill="none" />
-                        <circle
-                          cx="60"
-                          cy="60"
-                          r="50"
-                          stroke="#8b1538"
-                          strokeWidth="8"
-                          fill="none"
-                          strokeDasharray={`${(resumeScore / 100) * 314} 314`}
-                          strokeLinecap="round"
-                          className="transition-all duration-1000 ease-out"
-                        />
-                      </svg>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="text-center">
-                          <div className="text-3xl font-bold text-gray-900">{resumeScore}</div>
-                          <div className="text-sm text-gray-600">out of 100</div>
-                        </div>
+                    {isFetchingScore ? (
+                      <div className="flex flex-col items-center justify-center py-8">
+                        <div className="animate-spin h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full mb-4"></div>
+                        <p className="text-gray-600">Fetching your resume score...</p>
                       </div>
-                    </div>
-                    <p className="text-gray-600">
-                      Your resume shows strong technical skills with room for improvement in soft skills and
-                      certifications.
-                    </p>
+                    ) : scoreError ? (
+                      <div className="flex flex-col items-center justify-center py-8">
+                        <div className="text-red-500 mb-4">
+                          <svg className="w-16 h-16 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <p className="text-gray-600 mb-4">Could not fetch score</p>
+                        <Button 
+                          onClick={retryFetchScore}
+                          className="skillmap-button text-white"
+                          size="sm"
+                        >
+                          Retry
+                        </Button>
+                      </div>
+                    ) : targetScore !== null ? (
+                      <>
+                        <div className="relative w-32 h-32 mx-auto mb-4">
+                          <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 120 120">
+                            <circle cx="60" cy="60" r="50" stroke="#e5e7eb" strokeWidth="8" fill="none" />
+                            <circle
+                              cx="60"
+                              cy="60"
+                              r="50"
+                              stroke="#8b1538"
+                              strokeWidth="8"
+                              fill="none"
+                              strokeDasharray={`${(resumeScore / 100) * 314} 314`}
+                              strokeLinecap="round"
+                              className="transition-all duration-1000 ease-out"
+                            />
+                          </svg>
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="text-center">
+                              <div className="text-3xl font-bold text-gray-900">{resumeScore}</div>
+                              <div className="text-sm text-gray-600">out of 100</div>
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-gray-600">
+                          Your resume shows strong technical skills with room for improvement in soft skills and
+                          certifications.
+                        </p>
+                      </>
+                    ) : null}
                   </CardContent>
                 </Card>
 
