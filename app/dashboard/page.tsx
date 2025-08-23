@@ -10,7 +10,7 @@ import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
-import { Menu, User, Download, Calendar, Mail, Target, Award, Clock, ArrowRight, Briefcase, BookOpen, Code, Settings, MapPin, CheckCircle2, Circle, Play, Star, ExternalLink,} from "lucide-react"
+import { Menu, User, Download, Calendar, Mail, Target, Award, Clock, ArrowRight, Briefcase, BookOpen, Code, Settings, MapPin, CheckCircle2, Circle, Play, Star, ExternalLink, RefreshCw} from "lucide-react"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -78,6 +78,10 @@ export default function DashboardPage() {
   const [targetScore, setTargetScore] = useState<number | null>(null)
   const [scoreError, setScoreError] = useState<boolean>(false)
   const [isFetchingScore, setIsFetchingScore] = useState<boolean>(false)
+  const [skillsData, setSkillsData] = useState<any>(null)
+  const [skillsError, setSkillsError] = useState<boolean>(false)
+  const [isFetchingSkills, setIsFetchingSkills] = useState<boolean>(false)
+  const [skillsLoaded, setSkillsLoaded] = useState<boolean>(false)
 
   // Mock data - in real app, this would come from API
   const skillCategories: SkillCategory[] = [
@@ -419,12 +423,13 @@ export default function DashboardPage() {
       })
     }
 
+    //Temporary function to fetch ATS score
     const fetchATSScore = async () => {
       setIsFetchingScore(true)
       setScoreError(false)
       setResumeScore(0) // Reset score when fetching
       try {
-        const response = await apiFetch('https://api.aahil-khan.tech/ats-score')
+        const response = await apiFetch('http://localhost:5005/ats-score')
         const data = await response.json()
         console.log(data)
         if (data.success && data.atsScore && data.atsScore.ats_score) {
@@ -443,6 +448,32 @@ export default function DashboardPage() {
       }
     }
 
+    const fetchSkillsBreakdown = async () => {
+      setIsFetchingSkills(true)
+      setSkillsError(false)
+      try {
+        const response = await apiFetch('http://localhost:5005/skills')
+        const data = await response.json()
+        console.log('Skills data:', data)
+        if (data.success && data.skills) {
+          setSkillsData(data.skills)
+          setSkillsError(false)
+          setSkillsLoaded(true)
+        } else {
+          setSkillsError(true)
+          setSkillsData(null)
+          setSkillsLoaded(true)
+        }
+      } catch (error) {
+        console.error('Failed to fetch skills breakdown:', error)
+        setSkillsError(true)
+        setSkillsData(null)
+        setSkillsLoaded(true)
+      } finally {
+        setIsFetchingSkills(false)
+      }
+    }
+
     const initializePage = async () => {
       await checkAuth()
       
@@ -452,9 +483,13 @@ export default function DashboardPage() {
         setAnalysisData(JSON.parse(analysis))
       }
 
-      // Fetch ATS score - this will set isFetchingScore states
-      await fetchATSScore()
-      setIsLoading(false)
+      // Fetch ATS score and skills data in parallel
+      await Promise.all([
+        fetchATSScore(),
+        fetchSkillsBreakdown()
+      ])
+      
+      // Dashboard will show once skills are loaded (handled by skillsLoaded state)
     }
 
     initializePage()
@@ -493,12 +528,19 @@ export default function DashboardPage() {
     }
   }, [targetScore, isLoading, isFetchingScore])
 
+  // Effect to handle loading state when skills are loaded
+  useEffect(() => {
+    if (skillsLoaded) {
+      setIsLoading(false)
+    }
+  }, [skillsLoaded])
+
   const retryFetchScore = async () => {
     setIsFetchingScore(true)
     setScoreError(false)
     setResumeScore(0) // Reset score when retrying
     try {
-      const response = await apiFetch('https://api.aahil-khan.tech/ats-score')
+      const response = await apiFetch('http://localhost:5005/ats-score')
       const data = await response.json()
       console.log(data)
       if (data.success && data.atsScore && data.atsScore.ats_score) {
@@ -517,15 +559,44 @@ export default function DashboardPage() {
     }
   }
 
+  const retryFetchSkills = async () => {
+    setIsFetchingSkills(true)
+    setSkillsError(false)
+    try {
+      const response = await apiFetch('http://localhost:5005/skills')
+      const data = await response.json()
+      console.log('Skills data:', data)
+      if (data.success && data.skills) {
+        setSkillsData(data.skills)
+        setSkillsError(false)
+        setSkillsLoaded(true)
+      } else {
+        setSkillsError(true)
+        setSkillsData(null)
+        setSkillsLoaded(true)
+      }
+    } catch (error) {
+      console.error('Failed to fetch skills breakdown:', error)
+      setSkillsError(true)
+      setSkillsData(null)
+      setSkillsLoaded(true)
+    } finally {
+      setIsFetchingSkills(false)
+    }
+  }
+
   const exportToPDF = () => {
     // Mock PDF export
     alert("PDF export functionality would be implemented here!")
   }
 
-  if (isLoading) {
+  if (isLoading || !skillsLoaded) {
     return (
       <div className="min-h-screen skillmap-bg flex items-center justify-center">
-        <div className="animate-spin h-12 w-12 border-4 border-blue-600 border-t-transparent rounded-full"></div>
+        <div className="flex flex-col items-center">
+          <div className="animate-spin h-12 w-12 border-4 border-blue-600 border-t-transparent rounded-full mb-4"></div>
+          <p className="text-gray-600 text-lg">Loading your dashboard...</p>
+        </div>
       </div>
     )
   }
@@ -753,146 +824,337 @@ export default function DashboardPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-6">
-                      {/* Skill Distribution with Pie Chart */}
-                      <div>
-                        <h3 className="font-semibold mb-4">Skill Distribution</h3>
-                        <div className="flex justify-center mb-4">
-                          <ChartContainer
-                            config={{
-                              value: {
-                                label: "Skills",
-                              },
-                            }}
-                            className="h-80 w-80"
-                          >
-                            <ResponsiveContainer width="100%" height="100%">
-                              <PieChart>
-                                <Pie
-  data={skillCategories}
-  cx="50%"
-  cy="50%"
-  labelLine={false}
-  label={({ name, percent }) =>
-    `${name} ${typeof percent === "number" ? (percent * 100).toFixed(0) : "0"}%`
-  }
-  outerRadius={120}
-  fill="#8884d8"
-  dataKey="value"
->
-  {skillCategories.map((entry, index) => (
-    <Cell key={`cell-${index}`} fill={entry.color} />
-  ))}
-</Pie>
-                                <Tooltip />
-                              </PieChart>
-                            </ResponsiveContainer>
-                          </ChartContainer>
-                        </div>
-                        <div className="flex flex-wrap justify-center gap-4">
-                          {skillCategories.map((category) => (
-                            <div key={category.name} className="flex items-center space-x-2">
-                              <div className="w-4 h-4 rounded-full" style={{ backgroundColor: category.color }}></div>
-                              <span className="text-sm font-medium text-gray-700">{category.name}</span>
-                              <span className="text-sm text-gray-500">({category.value}%)</span>
-                            </div>
-                          ))}
-                        </div>
+                    {isFetchingSkills ? (
+                      <div className="flex flex-col items-center justify-center py-8">
+                        <div className="animate-spin h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full mb-4"></div>
+                        <p className="text-gray-600">Fetching your skills analysis...</p>
                       </div>
-
-                      {/* Skill Proficiency Breakdown */}
-                      <div className="border-t pt-6">
-                        <h3 className="font-semibold mb-4">Skill Proficiency Breakdown</h3>
-                        <div className="space-y-4">
-                          <div>
-                            <div className="flex justify-between items-center mb-2">
-                              <span className="text-sm font-medium">Advanced Skills</span>
-                              <Badge className="bg-green-100 text-green-800">
-                                {topSkills.filter((_, i) => i < 4).length} skills
-                              </Badge>
-                            </div>
-                            <div className="flex flex-wrap gap-1">
-                              {topSkills.slice(0, 4).map((skill) => (
-                                <Badge key={skill} className="bg-green-100 text-green-800 text-xs">
-                                  {skill}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-
-                          <div>
-                            <div className="flex justify-between items-center mb-2">
-                              <span className="text-sm font-medium">Intermediate Skills</span>
-                              <Badge className="bg-yellow-100 text-yellow-800">
-                                {topSkills.filter((_, i) => i >= 4 && i < 8).length} skills
-                              </Badge>
-                            </div>
-                            <div className="flex flex-wrap gap-1">
-                              {topSkills.slice(4, 8).map((skill) => (
-                                <Badge key={skill} className="bg-yellow-100 text-yellow-800 text-xs">
-                                  {skill}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-
-                          <div>
-                            <div className="flex justify-between items-center mb-2">
-                              <span className="text-sm font-medium">Beginner Skills</span>
-                              <Badge className="bg-blue-100 text-blue-800">
-                                {topSkills.filter((_, i) => i >= 8).length} skills
-                              </Badge>
-                            </div>
-                            <div className="flex flex-wrap gap-1">
-                              {topSkills.slice(8).map((skill) => (
-                                <Badge key={skill} className="bg-blue-100 text-blue-800 text-xs">
-                                  {skill}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
+                    ) : skillsError ? (
+                      <div className="flex flex-col items-center justify-center py-8">
+                        <div className="text-red-500 mb-4">
+                          <svg className="w-16 h-16 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
                         </div>
+                        <p className="text-gray-600 mb-4">Could not fetch skills data</p>
+                        <Button 
+                          onClick={retryFetchSkills}
+                          className="skillmap-button text-white"
+                          size="sm"
+                        >
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                          Retry
+                        </Button>
                       </div>
+                    ) : skillsData ? (
+                      <div className="space-y-6">
+                        {/* Skill Distribution with Pie Chart */}
+                        <div>
+                          <h3 className="font-semibold mb-4">Skill Distribution</h3>
+                          {(() => {
+                            // Process skillsData to create categories for pie chart
+                            const categoryCount = skillsData.reduce((acc: any, skill: any) => {
+                              acc[skill.skill_category] = (acc[skill.skill_category] || 0) + 1;
+                              return acc;
+                            }, {});
+                            
+                            const total = skillsData.length;
+                            const chartData = Object.entries(categoryCount).map(([category, count], index) => ({
+                              name: category,
+                              value: Math.round(((count as number) / total) * 100),
+                              count: count as number,
+                              color: COLORS[index % COLORS.length]
+                            }));
 
-                      {/* Resume Insights */}
-                      <div className="border-t pt-6">
-                        <h3 className="font-semibold mb-3">Resume Insights</h3>
-                        <div className="grid md:grid-cols-3 gap-4">
-                          <div className="text-center p-3 bg-blue-50 rounded-lg">
-                            <div className="text-2xl font-bold text-blue-600">{topSkills.length}</div>
-                            <div className="text-sm text-blue-700">Skills Extracted</div>
-                          </div>
-                          <div className="text-center p-3 bg-green-50 rounded-lg">
-                            <div className="text-2xl font-bold text-green-600">{workExperience.length}</div>
-                            <div className="text-sm text-green-700">Work Experiences</div>
-                          </div>
-                          <div className="text-center p-3 bg-purple-50 rounded-lg">
-                            <div className="text-2xl font-bold text-purple-600">
-                              {Math.round(
-                                workExperience.reduce((acc, exp) => acc + exp.skills.length, 0) / workExperience.length,
-                              )}
-                            </div>
-                            <div className="text-sm text-purple-700">Avg Skills/Role</div>
-                          </div>
+                            return (
+                              <>
+                                <div className="flex justify-center mb-6">
+                                  <div className="relative">
+                                    <ChartContainer
+                                      config={{
+                                        value: {
+                                          label: "Skills",
+                                        },
+                                      }}
+                                      className="h-96 w-96"
+                                    >
+                                      <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart margin={{ top: 20, right: 80, bottom: 20, left: 80 }}>
+                                          <Pie
+                                            data={chartData}
+                                            cx="50%"
+                                            cy="50%"
+                                            labelLine={false}
+                                            label={({ name, value }) => {
+                                              // Truncate long category names for labels
+                                              const truncatedName = name.length > 10 ? name.substring(0, 10) + '...' : name;
+                                              return `${truncatedName} ${value}%`;
+                                            }}
+                                            outerRadius={100}
+                                            fill="#8884d8"
+                                            dataKey="value"
+                                            animationBegin={300}
+                                            animationDuration={1200}
+                                            animationEasing="ease-out"
+                                          >
+                                            {chartData.map((entry, index) => (
+                                              <Cell key={`cell-${index}`} fill={entry.color} />
+                                            ))}
+                                          </Pie>
+                                          <Tooltip 
+                                            formatter={(value, name, props) => [
+                                              `${props.payload.count} skills (${value}%)`,
+                                              props.payload.name
+                                            ]}
+                                            labelStyle={{ color: '#374151' }}
+                                            contentStyle={{ 
+                                              backgroundColor: '#fff',
+                                              border: '1px solid #e5e7eb',
+                                              borderRadius: '8px',
+                                              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                                            }}
+                                          />
+                                        </PieChart>
+                                      </ResponsiveContainer>
+                                    </ChartContainer>
+                                  </div>
+                                </div>
+                                
+                                {/* Legend */}
+                                <div className="flex flex-wrap justify-center gap-3 mb-4">
+                                  {chartData.map((category) => (
+                                    <div key={category.name} className="flex items-center space-x-2 bg-gray-50 px-3 py-2 rounded-lg">
+                                      <div className="w-4 h-4 rounded-full shadow-sm" style={{ backgroundColor: category.color }}></div>
+                                      <span className="text-sm font-medium text-gray-700 whitespace-nowrap">{category.name}</span>
+                                      <span className="text-sm text-gray-500 font-medium">({category.value}%)</span>
+                                    </div>
+                                  ))}
+                                </div>
+
+                                {/* Summary Stats */}
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                                  {chartData.slice(0, 4).map((category) => (
+                                    <div key={category.name} className="text-center p-3 rounded-lg border border-gray-200">
+                                      <div className="text-lg font-bold" style={{ color: category.color }}>
+                                        {category.count}
+                                      </div>
+                                      <div className="text-xs text-gray-600 truncate" title={category.name}>
+                                        {category.name}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </>
+                            );
+                          })()}
                         </div>
-                      </div>
 
-                      {/* Skill Trends */}
-                      <div className="border-t pt-6">
-                        <h3 className="font-semibold mb-3">Most Mentioned Skills in Resume</h3>
-                        <div className="space-y-2">
-                          {topSkills.slice(0, 6).map((skill, index) => (
-                            <div key={skill} className="flex items-center justify-between">
-                              <span className="text-sm font-medium">{skill}</span>
-                              <div className="flex items-center space-x-2">
-                                <Progress value={100 - index * 15} className="w-20 h-2" />
-                                <span className="text-xs text-gray-500">{100 - index * 15}%</span>
+                        {/* Skill Proficiency Breakdown */}
+                        <div className="border-t pt-6">
+                          <h3 className="font-semibold mb-4">Skill Proficiency Breakdown</h3>
+                          <div className="space-y-4">
+                            {/* Advanced Skills */}
+                            <div>
+                              <div className="flex justify-between items-center mb-2">
+                                <span className="text-sm font-medium">Advanced Skills</span>
+                                <Badge className="bg-green-100 text-green-800">
+                                  {skillsData.filter((skill: any) => skill.skill_level.toLowerCase() === 'advanced').length} skills
+                                </Badge>
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                {skillsData
+                                  .filter((skill: any) => skill.skill_level.toLowerCase() === 'advanced')
+                                  .map((skill: any) => (
+                                    <Badge key={skill.skill_name} className="bg-green-100 text-green-800 text-xs">
+                                      {skill.skill_name}
+                                    </Badge>
+                                  ))}
                               </div>
                             </div>
-                          ))}
+
+                            {/* Intermediate Skills */}
+                            <div>
+                              <div className="flex justify-between items-center mb-2">
+                                <span className="text-sm font-medium">Intermediate Skills</span>
+                                <Badge className="bg-yellow-100 text-yellow-800">
+                                  {skillsData.filter((skill: any) => skill.skill_level.toLowerCase() === 'intermediate').length} skills
+                                </Badge>
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                {skillsData
+                                  .filter((skill: any) => skill.skill_level.toLowerCase() === 'intermediate')
+                                  .map((skill: any) => (
+                                    <Badge key={skill.skill_name} className="bg-yellow-100 text-yellow-800 text-xs">
+                                      {skill.skill_name}
+                                    </Badge>
+                                  ))}
+                              </div>
+                            </div>
+
+                            {/* Beginner Skills */}
+                            <div>
+                              <div className="flex justify-between items-center mb-2">
+                                <span className="text-sm font-medium">Beginner Skills</span>
+                                <Badge className="bg-blue-100 text-blue-800">
+                                  {skillsData.filter((skill: any) => skill.skill_level.toLowerCase() === 'beginner').length} skills
+                                </Badge>
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                {skillsData
+                                  .filter((skill: any) => skill.skill_level.toLowerCase() === 'beginner')
+                                  .map((skill: any) => (
+                                    <Badge key={skill.skill_name} className="bg-blue-100 text-blue-800 text-xs">
+                                      {skill.skill_name}
+                                    </Badge>
+                                  ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Resume Insights */}
+                        <div className="border-t pt-6">
+                          <h3 className="font-semibold mb-3">Resume Insights</h3>
+                          <div className="grid md:grid-cols-3 gap-4">
+                            <div className="text-center p-3 bg-blue-50 rounded-lg">
+                              <div className="text-2xl font-bold text-blue-600">{skillsData.length}</div>
+                              <div className="text-sm text-blue-700">Skills Extracted</div>
+                            </div>
+                            <div className="text-center p-3 bg-green-50 rounded-lg">
+                              <div className="text-2xl font-bold text-green-600">
+                                {new Set(skillsData.map((skill: any) => skill.skill_category)).size}
+                              </div>
+                              <div className="text-sm text-green-700">Skill Categories</div>
+                            </div>
+                            <div className="text-center p-3 bg-purple-50 rounded-lg">
+                              <div className="text-2xl font-bold text-purple-600">
+                                {skillsData.filter((skill: any) => skill.skill_level.toLowerCase() === 'advanced').length}
+                              </div>
+                              <div className="text-sm text-purple-700">Advanced Skills</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Top Skills by Category */}
+                        <div className="border-t pt-6">
+                          <h3 className="font-semibold mb-4">Top Skills by Category</h3>
+                          {(() => {
+                            // Group skills by category
+                            const skillsByCategory = skillsData.reduce((acc: any, skill: any) => {
+                              if (!acc[skill.skill_category]) {
+                                acc[skill.skill_category] = [];
+                              }
+                              acc[skill.skill_category].push(skill);
+                              return acc;
+                            }, {});
+
+                            // Sort skills within each category by level (Advanced > Intermediate > Beginner)
+                            const levelOrder = { 'advanced': 3, 'intermediate': 2, 'beginner': 1 };
+                            Object.keys(skillsByCategory).forEach(category => {
+                              skillsByCategory[category].sort((a: any, b: any) => {
+                                const levelA = levelOrder[a.skill_level.toLowerCase() as keyof typeof levelOrder] || 0;
+                                const levelB = levelOrder[b.skill_level.toLowerCase() as keyof typeof levelOrder] || 0;
+                                return levelB - levelA; // Sort descending (advanced first)
+                              });
+                            });
+
+                            return (
+                              <div className="space-y-6">
+                                {Object.entries(skillsByCategory)
+                                  .slice(0, 4) // Show top 4 categories
+                                  .map(([category, skills]: [string, any]) => (
+                                    <div key={category} className="bg-gray-50 rounded-lg p-4">
+                                      <div className="flex items-center justify-between mb-3">
+                                        <h4 className="font-semibold text-gray-900 flex items-center">
+                                          <div 
+                                            className="w-3 h-3 rounded-full mr-2" 
+                                            style={{ 
+                                              backgroundColor: COLORS[Object.keys(skillsByCategory).indexOf(category) % COLORS.length] 
+                                            }}
+                                          ></div>
+                                          {category}
+                                        </h4>
+                                        <Badge variant="outline" className="text-xs">
+                                          {skills.length} skills
+                                        </Badge>
+                                      </div>
+                                      
+                                      <div className="space-y-2">
+                                        {skills.slice(0, 5).map((skill: any, index: number) => (
+                                          <div key={skill.skill_name} className="flex items-center justify-between">
+                                            <div className="flex items-center space-x-2">
+                                              <span className="text-sm font-medium text-gray-700">
+                                                {index + 1}. {skill.skill_name}
+                                              </span>
+                                            </div>
+                                            <Badge 
+                                              className={`text-xs ${
+                                                skill.skill_level.toLowerCase() === 'advanced' ? 'bg-green-100 text-green-800' :
+                                                skill.skill_level.toLowerCase() === 'intermediate' ? 'bg-yellow-100 text-yellow-800' :
+                                                'bg-blue-100 text-blue-800'
+                                              }`}
+                                            >
+                                              {skill.skill_level.charAt(0).toUpperCase() + skill.skill_level.slice(1).toLowerCase()}
+                                            </Badge>
+                                          </div>
+                                        ))}
+                                        
+                                        {skills.length > 5 && (
+                                          <div className="text-xs text-gray-500 mt-2 text-center">
+                                            +{skills.length - 5} more skills in this category
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                
+                                {/* Overall Top Skills Summary */}
+                                <div className="border-t pt-4">
+                                  <h4 className="font-semibold text-gray-900 mb-3">Overall Top Skills</h4>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    {skillsData
+                                      .sort((a: any, b: any) => {
+                                        const levelA = levelOrder[a.skill_level.toLowerCase() as keyof typeof levelOrder] || 0;
+                                        const levelB = levelOrder[b.skill_level.toLowerCase() as keyof typeof levelOrder] || 0;
+                                        return levelB - levelA;
+                                      })
+                                      .slice(0, 8)
+                                      .map((skill: any, index: number) => (
+                                        <div key={skill.skill_name} className="flex items-center justify-between p-2 bg-white rounded border">
+                                          <span className="text-xs font-medium text-gray-700 truncate" title={skill.skill_name}>
+                                            {index + 1}. {skill.skill_name}
+                                          </span>
+                                          <div className="flex items-center space-x-1">
+                                            <div 
+                                              className="w-2 h-2 rounded-full" 
+                                              style={{ 
+                                                backgroundColor: COLORS[Object.keys(skillsByCategory).indexOf(skill.skill_category) % COLORS.length] 
+                                              }}
+                                            ></div>
+                                            <Badge 
+                                              className={`text-xs px-1 py-0 ${
+                                                skill.skill_level.toLowerCase() === 'advanced' ? 'bg-green-100 text-green-800' :
+                                                skill.skill_level.toLowerCase() === 'intermediate' ? 'bg-yellow-100 text-yellow-800' :
+                                                'bg-blue-100 text-blue-800'
+                                              }`}
+                                            >
+                                              {skill.skill_level.charAt(0).toUpperCase()}
+                                            </Badge>
+                                          </div>
+                                        </div>
+                                      ))}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-8">
+                        <p className="text-gray-600">No skills data available</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 

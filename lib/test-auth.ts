@@ -12,7 +12,7 @@ export async function testAuth() {
   console.log('Token preview:', token.substring(0, 50) + '...')
   
   try {
-    const response = await fetch('https://api.aahil-khan.tech/health', {
+    const response = await fetch('http://localhost:5005/health', {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
