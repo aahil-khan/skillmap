@@ -429,7 +429,7 @@ export default function DashboardPage() {
       setScoreError(false)
       setResumeScore(0) // Reset score when fetching
       try {
-        const response = await apiFetch('http://localhost:5005/ats-score')
+        const response = await apiFetch('https://api.aahil-khan.tech/ats-score')
         const data = await response.json()
         console.log(data)
         if (data.success && data.atsScore && data.atsScore.ats_score) {
@@ -452,7 +452,7 @@ export default function DashboardPage() {
       setIsFetchingSkills(true)
       setSkillsError(false)
       try {
-        const response = await apiFetch('http://localhost:5005/skills')
+        const response = await apiFetch('https://api.aahil-khan.tech/skills')
         const data = await response.json()
         console.log('Skills data:', data)
         if (data.success && data.skills) {
@@ -540,7 +540,7 @@ export default function DashboardPage() {
     setScoreError(false)
     setResumeScore(0) // Reset score when retrying
     try {
-      const response = await apiFetch('http://localhost:5005/ats-score')
+      const response = await apiFetch('https://api.aahil-khan.tech/ats-score')
       const data = await response.json()
       console.log(data)
       if (data.success && data.atsScore && data.atsScore.ats_score) {
@@ -563,7 +563,7 @@ export default function DashboardPage() {
     setIsFetchingSkills(true)
     setSkillsError(false)
     try {
-      const response = await apiFetch('http://localhost:5005/skills')
+      const response = await apiFetch('https://api.aahil-khan.tech/skills')
       const data = await response.json()
       console.log('Skills data:', data)
       if (data.success && data.skills) {

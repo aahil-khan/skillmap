@@ -75,7 +75,7 @@ export default function ResultsPage() {
         }
 
       // Send request to skill gap analysis API
-      const response = await apiFetch('http://localhost:5005/analyze-skill-gaps', {
+      const response = await apiFetch('https://api.aahil-khan.tech/analyze-skill-gaps', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
