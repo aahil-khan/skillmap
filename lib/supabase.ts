@@ -15,6 +15,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
       signIn: () => Promise.resolve({ data: null, error: new Error('Supabase not configured') }),
       signOut: () => Promise.resolve({ error: null }),
       getUser: () => Promise.resolve({ data: { user: null }, error: null }),
+      getSession: () => Promise.resolve({ data: { session: null }, error: new Error('Supabase not configured') }),
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } })
     },
     from: () => ({

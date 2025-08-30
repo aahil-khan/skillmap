@@ -404,7 +404,7 @@ This learning path will help you achieve your goal of becoming a well-rounded we
             </Link>
           </Button>
           <Button asChild className="skillmap-button text-white">
-            <Link href="/dashboard">
+            <Link href="/dashboard/overview">
               <ArrowRight className="mr-2 h-4 w-4" />
               Go to Dashboard
             </Link>
