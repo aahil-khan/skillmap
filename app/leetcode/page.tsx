@@ -97,6 +97,7 @@ interface RecentSubmission {
 }
 
 export default function LeetCodePage() {
+
   // Mock topic analysis data
   const topicAnalysis: TopicAnalysis[] = [
     {
@@ -189,19 +190,39 @@ export default function LeetCodePage() {
     localStorage.removeItem("leetcode-username");
     localStorage.removeItem("leetcode-profile");
   };
-  // Handles connecting the user's LeetCode account (mock implementation)
+  // Handles connecting the user's LeetCode account
   const handleConnect = async () => {
     if (!username.trim()) return;
     setIsLoading(true);
-    // Simulate API call delay
-    setTimeout(() => {
-      setIsConnected(true);
-      setProfile(mockProfile);
+    
+    try {
+      const response = await fetch(`http://localhost:5005/api/leetcode/awasthinush2580`);
+      const data = await response.json();
+      
+      if (response.ok) {
+        // Create profile object with API data + mock data for other fields
+        const profileData = {
+          ...mockProfile, // Keep all mock data as defaults
+          username: data.username,
+          totalSolved: data.totalSolved,
+          acceptanceRate: parseFloat(data.acceptanceRate.replace('%', '')), // Remove % and convert to number
+        };
+        
+        setIsConnected(true);
+        setProfile(profileData);
+        localStorage.setItem("leetcode-connected", "true");
+        localStorage.setItem("leetcode-username", username);
+        localStorage.setItem("leetcode-profile", JSON.stringify(profileData));
+      } else {
+        console.error('Failed to fetch LeetCode data:', data.error);
+        // You could show an error message to the user here
+      }
+    } catch (error) {
+      console.error('Error connecting to LeetCode:', error);
+      // You could show an error message to the user here
+    } finally {
       setIsLoading(false);
-      localStorage.setItem("leetcode-connected", "true");
-      localStorage.setItem("leetcode-username", username);
-      localStorage.setItem("leetcode-profile", JSON.stringify(mockProfile));
-    }, 1200);
+    }
   };
   const router = useRouter()
   const [isConnected, setIsConnected] = useState(false)

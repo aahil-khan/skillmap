@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     const backendFormData = new FormData()
     backendFormData.append('resume', file)
 
-    const response = await apiFetch('https://api.aahil-khan.tech/upload-resume', {
+    const response = await apiFetch('http://localhost:5005/upload-resume', {
       method: 'POST',
       body: backendFormData,
     })

@@ -70,7 +70,7 @@ export default function UploadPage() {
       formData.append('resume', file)
 
       // Send file to backend server for processing
-      const response = await apiFetch('https://api.aahil-khan.tech/upload-resume', {
+      const response = await apiFetch('http://localhost:5005/upload-resume', {
         method: 'POST',
         body: formData,
       })

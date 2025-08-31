@@ -83,7 +83,7 @@ export default function DashboardLayout({
       setScoreError(false)
       setResumeScore(0) // Reset score when fetching
       try {
-        const response = await apiFetch('https://api.aahil-khan.tech/ats-score')
+        const response = await apiFetch('http://localhost:5005/ats-score')
         const data = await response.json()
         console.log(data)
         if (data.success && data.atsScore && data.atsScore.ats_score) {
@@ -157,7 +157,7 @@ export default function DashboardLayout({
     setScoreError(false)
     setResumeScore(0) // Reset score when retrying
     try {
-      const response = await apiFetch('https://api.aahil-khan.tech/ats-score')
+      const response = await apiFetch('http://localhost:5005/ats-score')
       const data = await response.json()
       console.log(data)
       if (data.success && data.atsScore && data.atsScore.ats_score) {
@@ -386,24 +386,24 @@ export default function DashboardLayout({
         <div className="mb-6">
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8">
-              <Link 
-                href="/dashboard/overview"
-                className="py-2 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              >
-                Overview
-              </Link>
-              <Link 
-                href="/dashboard/learning-roadmap"
-                className="py-2 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              >
-                Learning Roadmap
-              </Link>
-              <Link 
-                href="/dashboard/peer-matching"
-                className="py-2 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              >
-                Peer Matching
-              </Link>
+                <Button asChild variant="ghost" className="py-2 px-4 rounded-lg hover:bg-blue-50 transition-colors">
+                <Link 
+                  href="/dashboard/learning-roadmap"
+                  className="flex items-center space-x-2"
+                >
+                  <BookOpen className="h-4 w-4" />
+                  <span>Learning Roadmap</span>
+                </Link>
+                </Button>
+                <Button asChild variant="ghost" className="py-2 px-4 rounded-lg hover:bg-green-50 transition-colors">
+                <Link 
+                  href="/dashboard/peer-matching"
+                  className="flex items-center space-x-2"
+                >
+                  <Users className="h-4 w-4" />
+                  <span>Peer Matching</span>
+                </Link>
+                </Button>
             </nav>
           </div>
         </div>
