@@ -45,23 +45,28 @@ import Link from "next/link"
 
 interface LeetCodeProfile {
   username: string
-  realName?: string
+  name?: string // realName from backend
+  birthday?: string | null
   avatar?: string
   ranking: number
-  reputation: number
-  gitHubUrl?: string
-  twitterUrl?: string
-  linkedInUrl?: string
-  website?: string
-  countryName?: string
+  reputation?: number | null
+  gitHub?: string | null
+  twitter?: string | null
+  linkedIN?: string | null
+  website?: string[]
+  country?: string | null
+  company?: string | null
+  school?: string | null
   skillTags: string[]
-  totalSolved: number
-  totalQuestions: number
-  easySolved: number
-  mediumSolved: number
-  hardSolved: number
-  acceptanceRate: number
-  ranking_percentile: number
+  about?: string
+  // Additional fields from other API calls
+  totalSolved?: number
+  totalQuestions?: number
+  easySolved?: number
+  mediumSolved?: number
+  hardSolved?: number
+  acceptanceRate?: number
+  ranking_percentile?: number
 }
 
 interface ProblemStats {
@@ -95,6 +100,24 @@ interface RecentSubmission {
   memory: string
   language: string
 }
+
+/**
+ * Calculate top percentile from LeetCode ranking
+ * LeetCode has approximately 20 million users (as of 2024)
+ * @param ranking - User's current ranking position
+ * @param totalUsers - Total number of LeetCode users (default: 20,000,000)
+ * @returns Percentile as a number (e.g., 85.5 for top 85.5%)
+ */
+const calculateTopPercentile = (ranking: number, totalUsers: number = 20000000): number => {
+  if (!ranking || ranking <= 0) return 0;
+  if (ranking > totalUsers) return 0;
+  
+  // Calculate what percentage of users this person is better than
+  const percentile = ((totalUsers - ranking) / totalUsers) * 100;
+  
+  // Round to 1 decimal place for clean display
+  return Math.round(percentile * 10) / 10;
+};
 
 export default function LeetCodePage() {
 
@@ -164,13 +187,43 @@ export default function LeetCodePage() {
       console.log('API Response:', data); // Debug log
       
       if (response.ok) {
-        // Create profile object with API data + mock data for other fields
+        // Fetch detailed profile information
+        let detailedProfile = {};
+        try {
+          const profileResponse = await fetch(`http://localhost:5005/api/leetcode/${username}/profile`);
+          const profileData = await profileResponse.json();
+          
+          if (profileResponse.ok) {
+            detailedProfile = {
+              name: profileData.name,
+              avatar: profileData.avatar,
+              ranking: profileData.ranking,
+              reputation: profileData.reputation,
+              gitHub: profileData.gitHub,
+              twitter: profileData.twitter,
+              linkedIN: profileData.linkedIN,
+              website: profileData.website,
+              country: profileData.country,
+              company: profileData.company,
+              school: profileData.school,
+              skillTags: profileData.skillTags || [],
+              about: profileData.about,
+            };
+          }
+        } catch (profileError) {
+          console.error('Error fetching detailed profile:', profileError);
+        }
+        
+        // Create profile object with API data + detailed profile + mock data for other fields
+        const finalRanking = (detailedProfile as any).ranking || data.ranking;
         const profileData = {
           ...mockProfile, // Keep all mock data as defaults
+          ...detailedProfile, // Override with detailed profile data
           username: data.username,
           totalSolved: data.totalSolved,
           acceptanceRate: parseFloat(data.acceptanceRate.replace('%', '')), // Remove % and convert to number
-          ranking: data.ranking,
+          ranking: finalRanking,
+          ranking_percentile: calculateTopPercentile(finalRanking), // Calculate percentile from ranking
         };
         
         // Update problem stats with backend data
@@ -299,6 +352,49 @@ export default function LeetCodePage() {
           // Keep mock data if topics fetch fails
         }
         
+        // Fetch activity data from backend
+        try {
+          const activityResponse = await fetch(`http://localhost:5005/api/leetcode/${username}/activity`);
+          const activityData = await activityResponse.json();
+          
+          if (activityResponse.ok) {
+            // Create a full year calendar with backend data
+            const submissionMap = new Map();
+            activityData.submissions.forEach((sub: any) => {
+              submissionMap.set(sub.date, sub.count);
+            });
+            
+            // Generate full year data (current year)
+            const currentYear = new Date().getFullYear();
+            const startDate = new Date(currentYear, 0, 1);
+            const endDate = new Date(currentYear, 11, 31);
+            const fullYearData: SubmissionData[] = [];
+            
+            for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+              const dateStr = d.toISOString().slice(0, 10);
+              fullYearData.push({
+                date: dateStr,
+                count: submissionMap.get(dateStr) || 0
+              });
+            }
+            
+            // Calculate daily average
+            const totalDays = activityData.totalActiveDays || 1; // Avoid division by zero
+            const totalSubmissions = activityData.submissions.reduce((sum: number, sub: any) => sum + sub.count, 0);
+            const dailyAverage = parseFloat((totalSubmissions / totalDays).toFixed(1));
+            
+            setSubmissionData(fullYearData);
+            setActivityStats({
+              streak: activityData.streak || 0,
+              totalActiveDays: activityData.totalActiveDays || 0,
+              dailyAverage: dailyAverage
+            });
+          }
+        } catch (activityError) {
+          console.error('Error fetching activity:', activityError);
+          // Keep mock data if activity fetch fails
+        }
+        
         localStorage.setItem("leetcode-connected", "true");
         localStorage.setItem("leetcode-username", username);
         localStorage.setItem("leetcode-profile", JSON.stringify(profileData));
@@ -371,11 +467,11 @@ export default function LeetCodePage() {
   // Mock data - in real app, this would come from LeetCode API
   const mockProfile: LeetCodeProfile = {
     username: "john_coder",
-    realName: "John Doe",
+    name: "John Doe",
     avatar: "/leetcode-avatar.png",
     ranking: 125847,
     reputation: 1250,
-    countryName: "United States",
+    country: "United States",
     skillTags: ["Dynamic Programming", "Array", "String", "Tree", "Graph", "Backtracking"],
     totalSolved: 342,
     totalQuestions: 2500,
@@ -413,13 +509,19 @@ export default function LeetCodePage() {
     },
   ]);
 
-  // Generate mock submission data for a full year (2024)
-  const submissionData: SubmissionData[] = Array.from({ length: 365 }, (_, i) => ({
+  // Activity data state
+  const [submissionData, setSubmissionData] = useState<SubmissionData[]>(Array.from({ length: 365 }, (_, i) => ({
     date: new Date(2024, 0, 1 + i).toISOString().slice(0, 10),
     count: Math.floor(Math.random() * 3),
     accepted: Math.random() > 0.2,
     difficulty: ["Easy", "Medium", "Hard"][Math.floor(Math.random() * 3)]
-  }));
+  })));
+  
+  const [activityStats, setActivityStats] = useState({
+    streak: 15,
+    totalActiveDays: 28,
+    dailyAverage: 4.2
+  });
 
   const handleLogout = () => {
     localStorage.removeItem("skillmap-user")
@@ -768,7 +870,7 @@ export default function LeetCodePage() {
                       />
                     </div>
                     <div>
-                      <h2 className="text-2xl font-bold text-gray-900">{profile?.realName || profile?.username}</h2>
+                      <h2 className="text-2xl font-bold text-gray-900">{profile?.name || profile?.username}</h2>
                       <p className="text-gray-600">@{profile?.username}</p>
                       <div className="flex items-center space-x-4 mt-2">
                         <Badge className="bg-orange-100 text-orange-800">
@@ -1045,8 +1147,8 @@ export default function LeetCodePage() {
                     <div className="flex flex-col items-center justify-center">
                       <div style={{ width: '100%', maxWidth: 800 }}>
                         <CalendarHeatmap
-                          startDate={submissionData[0].date}
-                          endDate={submissionData[submissionData.length - 1].date}
+                          startDate={submissionData.length > 0 ? submissionData[0].date : new Date(2024, 0, 1).toISOString().slice(0, 10)}
+                          endDate={submissionData.length > 0 ? submissionData[submissionData.length - 1].date : new Date(2024, 11, 31).toISOString().slice(0, 10)}
                           values={submissionData.map((d) => ({ date: d.date, count: d.count }))}
                           classForValue={(value: { date: string; count: number } | undefined) => {
                             if (!value || value.count === 0) return "color-empty"
@@ -1069,86 +1171,147 @@ export default function LeetCodePage() {
                       </div>
                       {/* Tooltip style for react-tooltip (if used) */}
                       <style>{`
-                        .color-empty { fill: #e5e7eb; }
-                        /* Custom tooltip style for react-tooltip */
+                        /* Container styling */
+                        .react-calendar-heatmap {
+                          background: #ffffff;
+                          border-radius: 8px;
+                          padding: 16px;
+                          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+                        }
+                        
+                        /* Color scheme - using existing blue shades from your design */
+                        .color-empty { 
+                          fill: #f1f5f9;
+                          stroke: #ffffff;
+                          stroke-width: 1px;
+                        }
+                        .color-scale-1 { 
+                          fill: #dbeafe;
+                          stroke: #ffffff;
+                          stroke-width: 1px;
+                        }
+                        .color-scale-2 { 
+                          fill: #93c5fd;
+                          stroke: #ffffff;
+                          stroke-width: 1px;
+                        }
+                        .color-scale-3 { 
+                          fill: #3b82f6;
+                          stroke: #ffffff;
+                          stroke-width: 1px;
+                        }
+                        .color-scale-4 { 
+                          fill: #1d4ed8;
+                          stroke: #ffffff;
+                          stroke-width: 1px;
+                        }
+                        
+                        /* Hover effects */
+                        .react-calendar-heatmap rect:hover {
+                          stroke: #1f2937 !important;
+                          stroke-width: 2px !important;
+                          filter: brightness(0.9);
+                          cursor: pointer;
+                        }
+                        
+                        /* Month labels styling */
+                        .react-calendar-heatmap .react-calendar-heatmap-month-label {
+                          font-size: 12px !important;
+                          fill: #6b7280;
+                          font-weight: 500;
+                          dominant-baseline: middle;
+                        }
+                        
+                        /* Hide weekday labels */
+                        .react-calendar-heatmap .react-calendar-heatmap-weekday-label { 
+                          display: none; 
+                        }
+                        
+                        /* Individual day squares */
+                        .react-calendar-heatmap rect {
+                          rx: 2px;
+                          ry: 2px;
+                          width: 11px !important;
+                          height: 11px !important;
+                          shape-rendering: geometricPrecision;
+                          transition: all 0.2s ease;
+                        }
+                        
+                        /* Spacing between squares */
+                        .react-calendar-heatmap .react-calendar-heatmap-days > g {
+                          transform: translateX(0px);
+                        }
+                        
+                        .react-calendar-heatmap .react-calendar-heatmap-days > g > rect {
+                          transform: translate(0px, 0px);
+                        }
+                        
+                        /* Add proper spacing between columns (weeks) */
+                        .react-calendar-heatmap .react-calendar-heatmap-days {
+                          transform: translateX(8px);
+                        }
+                        
+                        /* Month separators - subtle */
+                        .react-calendar-heatmap .react-calendar-heatmap-month-separator {
+                          stroke: transparent;
+                          stroke-width: 0;
+                        }
+                        
+                        /* Custom tooltip style */
                         [data-tip] {
                           position: relative;
                         }
                         .__react_component_tooltip {
-                          font-size: 13px !important;
-                          background: #fff !important;
-                          color: #1e293b !important;
-                          border: 1px solid #cbd5e1 !important;
-                          border-radius: 8px !important;
-                          box-shadow: 0 2px 8px #0001;
+                          font-size: 12px !important;
+                          background: #1f2937 !important;
+                          color: #ffffff !important;
+                          border: none !important;
+                          border-radius: 6px !important;
+                          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
                           padding: 8px 12px !important;
                           z-index: 9999;
+                          font-weight: 500;
                         }
-                        .color-scale-1 { fill: #dbeafe; }
-                        .color-scale-2 { fill: #60a5fa; }
-                        .color-scale-3 { fill: #2563eb; }
-                        .color-scale-4 { fill: #1e40af; }
-                        .react-calendar-heatmap .react-calendar-heatmap-weekday-label { display: none; }
-                        .react-calendar-heatmap .react-calendar-heatmap-month-label {
-                          font-size: 15px !important;
-                          fill: #1e293b;
-                          font-weight: 700;
-                          letter-spacing: 1px;
-                          text-shadow: 0 1px 4px #fff, 0 1px 0 #fff;
-                          paint-order: stroke fill;
-                          stroke: #fff;
-                          stroke-width: 4px;
+                        .__react_component_tooltip:after {
+                          border-top-color: #1f2937 !important;
                         }
-                        .react-calendar-heatmap .react-calendar-heatmap-month-separator {
-                          stroke: #6366f1;
-                          stroke-width: 8px;
-                          shape-rendering: crispEdges;
-                        }
-                        /* Add extra space between each month by targeting the first week group of each month */
-                        .react-calendar-heatmap .react-calendar-heatmap-month-separator {
-                          stroke: #6366f1;
-                          stroke-width: 8px;
-                          shape-rendering: crispEdges;
-                          pointer-events: none;
-                        }
-                        /* Add left margin to the first week group of each month for visible separation */
-                        .react-calendar-heatmap .react-calendar-heatmap-days > g {
-                          margin-left: 0;
-                        }
-                        .react-calendar-heatmap .react-calendar-heatmap-days > g.month-start {
-                          margin-left: 24px !important;
-                        }
-                        .react-calendar-heatmap text { font-size: 11px !important; }
-                        .react-calendar-heatmap rect {
-                          rx: 4px;
-                          ry: 4px;
-                          width: 22px !important;
-                          height: 22px !important;
-                          shape-rendering: geometricPrecision;
-                          /* Keep margin for spacing */
-                          margin: 0 8px 8px 0 !important;
-                        }
-                        .react-calendar-heatmap .react-calendar-heatmap-days > g > rect {
-                          /* Add more margin between boxes by shifting each rect */
-                          transform: translate(8px, 8px);
-                        }
-                        .react-calendar-heatmap .react-calendar-heatmap-days > g {
-                          /* Add more space between columns */
-                          transform: translateX(8px);
+                        
+                        /* Responsive adjustments */
+                        @media (max-width: 768px) {
+                          .react-calendar-heatmap rect {
+                            width: 9px !important;
+                            height: 9px !important;
+                          }
+                          .react-calendar-heatmap .react-calendar-heatmap-month-label {
+                            font-size: 10px !important;
+                          }
                         }
                       `}</style>
                     </div>
+                    
+                    {/* Activity Legend - using existing color scheme */}
+                    <div className="flex items-center justify-end mt-4 gap-2 text-sm text-gray-600">
+                      <span>Less</span>
+                      <div className="flex gap-1">
+                        <div className="w-3 h-3 rounded-sm border border-white" style={{ backgroundColor: '#f1f5f9' }}></div>
+                        <div className="w-3 h-3 rounded-sm border border-white" style={{ backgroundColor: '#dbeafe' }}></div>
+                        <div className="w-3 h-3 rounded-sm border border-white" style={{ backgroundColor: '#93c5fd' }}></div>
+                        <div className="w-3 h-3 rounded-sm border border-white" style={{ backgroundColor: '#3b82f6' }}></div>
+                        <div className="w-3 h-3 rounded-sm border border-white" style={{ backgroundColor: '#1d4ed8' }}></div>
+                      </div>
+                      <span>More</span>
+                    </div>
                     <div className="grid grid-cols-3 gap-4 mt-6">
                       <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-100">
-                        <div className="text-2xl font-bold text-blue-600">28</div>
-                        <div className="text-sm text-blue-700">This Week</div>
+                        <div className="text-2xl font-bold text-blue-600">{activityStats.totalActiveDays}</div>
+                        <div className="text-sm text-blue-700">Total Active Days</div>
                       </div>
                       <div className="text-center p-3 bg-green-50 rounded-lg border border-green-100">
-                        <div className="text-2xl font-bold text-green-600">4.2</div>
+                        <div className="text-2xl font-bold text-green-600">{activityStats.dailyAverage}</div>
                         <div className="text-sm text-green-700">Daily Average</div>
                       </div>
                       <div className="text-center p-3 bg-purple-50 rounded-lg border border-purple-100">
-                        <div className="text-2xl font-bold text-purple-600">15</div>
+                        <div className="text-2xl font-bold text-purple-600">{activityStats.streak}</div>
                         <div className="text-sm text-purple-700">Streak Days</div>
                       </div>
                     </div>
