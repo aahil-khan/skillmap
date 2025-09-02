@@ -98,8 +98,7 @@ interface RecentSubmission {
 
 export default function LeetCodePage() {
 
-  // Mock topic analysis data
-  const topicAnalysis: TopicAnalysis[] = [
+  const [topicAnalysis, setTopicAnalysis] = useState<TopicAnalysis[]>([
     {
       topic: "Array",
       solved: 42,
@@ -142,9 +141,195 @@ export default function LeetCodePage() {
       percentage: 62.5,
       strength: "Good",
     },
-  ];
-  // Mock recent submissions data
-  const recentSubmissions: RecentSubmission[] = [
+  ]);
+
+  
+  // Handles disconnecting the user's LeetCode account
+  const handleDisconnect = () => {
+    setIsConnected(false);
+    setProfile(null);
+    localStorage.removeItem("leetcode-connected");
+    localStorage.removeItem("leetcode-username");
+    localStorage.removeItem("leetcode-profile");
+  };
+  // Handles connecting the user's LeetCode account
+  const handleConnect = async () => {
+    if (!username.trim()) return;
+    setIsLoading(true);
+    
+    try {
+      const response = await fetch(`http://localhost:5005/api/leetcode/${username}`);
+      const data = await response.json();
+      
+      console.log('API Response:', data); // Debug log
+      
+      if (response.ok) {
+        // Create profile object with API data + mock data for other fields
+        const profileData = {
+          ...mockProfile, // Keep all mock data as defaults
+          username: data.username,
+          totalSolved: data.totalSolved,
+          acceptanceRate: parseFloat(data.acceptanceRate.replace('%', '')), // Remove % and convert to number
+          ranking: data.ranking,
+        };
+        
+        // Update problem stats with backend data
+        const updatedProblemStats: ProblemStats[] = [
+          { 
+            difficulty: "Easy", 
+            solved: data.problemStats.easy.solved, 
+            total: data.problemStats.easy.total, 
+            percentage: data.problemStats.easy.percentage, 
+            color: "#10b981", 
+            avgTime: data.problemStats.easy.avgTime 
+          },
+          { 
+            difficulty: "Medium", 
+            solved: data.problemStats.medium.solved, 
+            total: data.problemStats.medium.total, 
+            percentage: data.problemStats.medium.percentage, 
+            color: "#f59e0b", 
+            avgTime: data.problemStats.medium.avgTime 
+          },
+          { 
+            difficulty: "Hard", 
+            solved: data.problemStats.hard.solved, 
+            total: data.problemStats.hard.total, 
+            percentage: data.problemStats.hard.percentage, 
+            color: "#ef4444", 
+            avgTime: data.problemStats.hard.avgTime 
+          },
+        ];
+        
+        console.log('Profile Data to Save:', profileData); // Debug log
+        
+        setIsConnected(true);
+        setProfile(profileData);
+        setProblemStats(updatedProblemStats);
+        
+        // Fetch recent submissions from backend
+        try {
+          const submissionsResponse = await fetch(`http://localhost:5005/api/leetcode/${username}/submission?limit=5`);
+          const submissionsData = await submissionsResponse.json();
+          
+          if (submissionsResponse.ok) {
+            // Transform backend submissions to match frontend interface
+            const transformedSubmissions: RecentSubmission[] = submissionsData.submissions.map((sub: any) => ({
+              title: sub.title,
+              difficulty: "Medium", // Default since backend doesn't provide this
+              status: sub.statusDisplay,
+              timestamp: new Date(parseInt(sub.timestamp) * 1000).toLocaleString(), // Convert Unix timestamp
+              runtime: "N/A", // Backend doesn't provide this
+              memory: "N/A", // Backend doesn't provide this
+              language: sub.lang === "cpp" ? "C++" : sub.lang.charAt(0).toUpperCase() + sub.lang.slice(1),
+            }));
+            
+            setRecentSubmissions(transformedSubmissions);
+          }
+        } catch (submissionError) {
+          console.error('Error fetching submissions:', submissionError);
+          // Keep mock data if submissions fetch fails
+        }
+        
+        // Fetch languages data from backend
+        try {
+          const languagesResponse = await fetch(`http://localhost:5005/api/leetcode/${username}/languages`);
+          const languagesData = await languagesResponse.json();
+          
+          if (languagesResponse.ok) {
+            // Define color palette for languages
+            const languageColors = ["#4F8EF7", "#E76F51", "#2A9D8F", "#F59E0B", "#8B5CF6", "#10B981"];
+            
+            // Transform backend languages to match frontend interface
+            const transformedLanguages = languagesData.languages.map((lang: any, index: number) => ({
+              language: lang.languageName,
+              submissions: lang.problemsSolved, // Use problemsSolved as submissions count
+              accepted: Math.floor(lang.problemsSolved * 0.8), // Estimate 80% acceptance rate
+              successRate: 80.0, // Default success rate since backend doesn't provide this
+              trend: "+0.0%", // Default trend since backend doesn't provide this
+              color: languageColors[index % languageColors.length],
+            }));
+            
+            setLanguageBreakdown(transformedLanguages);
+          }
+        } catch (languageError) {
+          console.error('Error fetching languages:', languageError);
+          // Keep mock data if languages fetch fails
+        }
+        
+        // Fetch topics data from backend
+        try {
+          const topicsResponse = await fetch(`http://localhost:5005/api/leetcode/${username}/topics`);
+          const topicsData = await topicsResponse.json();
+          
+          if (topicsResponse.ok) {
+            // Combine all topics from different difficulty levels
+            const allTopics = [
+              ...(topicsData.topics.fundamental || []),
+              ...(topicsData.topics.intermediate || []),
+              ...(topicsData.topics.advanced || [])
+            ];
+            
+            // Transform backend topics to match frontend interface
+            const transformedTopics: TopicAnalysis[] = allTopics.map((topic: any) => {
+              // Estimate total problems based on solved count and difficulty level
+              const estimatedTotal = Math.ceil(topic.problemsSolved / 0.6); // Assume 60% completion rate
+              const percentage = (topic.problemsSolved / estimatedTotal) * 100;
+              
+              // Determine strength based on problems solved and percentage
+              let strength: "Strong" | "Good" | "Needs Work" | "Weak";
+              if (percentage >= 80) strength = "Strong";
+              else if (percentage >= 60) strength = "Good";
+              else if (percentage >= 40) strength = "Needs Work";
+              else strength = "Weak";
+              
+              return {
+                topic: topic.tagName,
+                solved: topic.problemsSolved,
+                total: estimatedTotal,
+                percentage: percentage,
+                strength: strength,
+              };
+            }).sort((a, b) => b.solved - a.solved); // Sort by problems solved in descending order
+            
+            setTopicAnalysis(transformedTopics);
+          }
+        } catch (topicError) {
+          console.error('Error fetching topics:', topicError);
+          // Keep mock data if topics fetch fails
+        }
+        
+        localStorage.setItem("leetcode-connected", "true");
+        localStorage.setItem("leetcode-username", username);
+        localStorage.setItem("leetcode-profile", JSON.stringify(profileData));
+      } else {
+        console.error('Failed to fetch LeetCode data:', data.error);
+        // You could show an error message to the user here
+      }
+    } catch (error) {
+      console.error('Error connecting to LeetCode:', error);
+      // You could show an error message to the user here
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+
+
+
+  const router = useRouter()
+  const [isConnected, setIsConnected] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [username, setUsername] = useState("")
+  const [profile, setProfile] = useState<LeetCodeProfile | null>(null)
+  const [showUserMenu, setShowUserMenu] = useState(false)
+  const [userProfile, setUserProfile] = useState<any>(null)
+  const [problemStats, setProblemStats] = useState<ProblemStats[]>([
+    { difficulty: "Easy", solved: 156, total: 800, percentage: 19.5, color: "#10b981", avgTime: 7 },
+    { difficulty: "Medium", solved: 142, total: 1200, percentage: 11.8, color: "#f59e0b", avgTime: 18 },
+    { difficulty: "Hard", solved: 44, total: 500, percentage: 8.8, color: "#ef4444", avgTime: 41 },
+  ])
+  const [recentSubmissions, setRecentSubmissions] = useState<RecentSubmission[]>([
     {
       title: "Two Sum",
       difficulty: "Easy",
@@ -181,56 +366,7 @@ export default function LeetCodePage() {
       memory: "45 MB",
       language: "Java",
     },
-  ];
-  // Handles disconnecting the user's LeetCode account
-  const handleDisconnect = () => {
-    setIsConnected(false);
-    setProfile(null);
-    localStorage.removeItem("leetcode-connected");
-    localStorage.removeItem("leetcode-username");
-    localStorage.removeItem("leetcode-profile");
-  };
-  // Handles connecting the user's LeetCode account
-  const handleConnect = async () => {
-    if (!username.trim()) return;
-    setIsLoading(true);
-    
-    try {
-      const response = await fetch(`http://localhost:5005/api/leetcode/awasthinush2580`);
-      const data = await response.json();
-      
-      if (response.ok) {
-        // Create profile object with API data + mock data for other fields
-        const profileData = {
-          ...mockProfile, // Keep all mock data as defaults
-          username: data.username,
-          totalSolved: data.totalSolved,
-          acceptanceRate: parseFloat(data.acceptanceRate.replace('%', '')), // Remove % and convert to number
-        };
-        
-        setIsConnected(true);
-        setProfile(profileData);
-        localStorage.setItem("leetcode-connected", "true");
-        localStorage.setItem("leetcode-username", username);
-        localStorage.setItem("leetcode-profile", JSON.stringify(profileData));
-      } else {
-        console.error('Failed to fetch LeetCode data:', data.error);
-        // You could show an error message to the user here
-      }
-    } catch (error) {
-      console.error('Error connecting to LeetCode:', error);
-      // You could show an error message to the user here
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  const router = useRouter()
-  const [isConnected, setIsConnected] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [username, setUsername] = useState("")
-  const [profile, setProfile] = useState<LeetCodeProfile | null>(null)
-  const [showUserMenu, setShowUserMenu] = useState(false)
-  const [userProfile, setUserProfile] = useState<any>(null)
+  ])
 
   // Mock data - in real app, this would come from LeetCode API
   const mockProfile: LeetCodeProfile = {
@@ -250,14 +386,7 @@ export default function LeetCodePage() {
     ranking_percentile: 15.2,
   }
 
-  const problemStats: ProblemStats[] = [
-    { difficulty: "Easy", solved: 156, total: 800, percentage: 19.5, color: "#10b981", avgTime: 7 }, // in minutes
-    { difficulty: "Medium", solved: 142, total: 1200, percentage: 11.8, color: "#f59e0b", avgTime: 18 },
-    { difficulty: "Hard", solved: 44, total: 500, percentage: 8.8, color: "#ef4444", avgTime: 41 },
-  ]
-
-  // Mock language breakdown data
-  const languageBreakdown = [
+  const [languageBreakdown, setLanguageBreakdown] = useState([
     {
       language: "Python",
       submissions: 210,
@@ -282,7 +411,7 @@ export default function LeetCodePage() {
       trend: "+0.5%",
       color: "#2A9D8F",
     },
-  ];
+  ]);
 
   // Generate mock submission data for a full year (2024)
   const submissionData: SubmissionData[] = Array.from({ length: 365 }, (_, i) => ({
@@ -644,11 +773,11 @@ export default function LeetCodePage() {
                       <div className="flex items-center space-x-4 mt-2">
                         <Badge className="bg-orange-100 text-orange-800">
                           <Trophy className="w-3 h-3 mr-1" />
-                          Rank #{profile?.ranking.toLocaleString()}
+                          Rank #{profile?.ranking?.toLocaleString() || 'N/A'}
                         </Badge>
                         <Badge className="bg-blue-100 text-blue-800">
                           <Star className="w-3 h-3 mr-1" />
-                          {profile?.reputation} reputation
+                          {profile?.reputation || 0} reputation
                         </Badge>
                       </div>
                     </div>
@@ -666,20 +795,20 @@ export default function LeetCodePage() {
               <CardContent>
                 <div className="grid md:grid-cols-4 gap-6">
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-green-600">{profile?.totalSolved}</div>
+                    <div className="text-3xl font-bold text-green-600">{profile?.totalSolved || 0}</div>
                     <div className="text-sm text-gray-600">Problems Solved</div>
-                    <div className="text-xs text-gray-500">of {profile?.totalQuestions.toLocaleString()} total</div>
+                    <div className="text-xs text-gray-500">of {profile?.totalQuestions?.toLocaleString() || 'N/A'} total</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-blue-600">{profile?.acceptanceRate}%</div>
+                    <div className="text-3xl font-bold text-blue-600">{profile?.acceptanceRate || 0}%</div>
                     <div className="text-sm text-gray-600">Acceptance Rate</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-purple-600">{profile?.ranking_percentile}%</div>
+                    <div className="text-3xl font-bold text-purple-600">{profile?.ranking_percentile || 0}%</div>
                     <div className="text-sm text-gray-600">Top Percentile</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-orange-600">{profile?.skillTags.length}</div>
+                    <div className="text-3xl font-bold text-orange-600">{profile?.skillTags?.length || 0}</div>
                     <div className="text-sm text-gray-600">Skill Tags</div>
                   </div>
                 </div>
