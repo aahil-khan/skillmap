@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -14,6 +14,12 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { ResponsiveContainer } from "recharts"
 import CalendarHeatmap from "react-calendar-heatmap"
 import "react-calendar-heatmap/dist/styles.css"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import {
   Menu,
   User,
@@ -101,6 +107,14 @@ interface RecentSubmission {
   language: string
 }
 
+interface RecommendedProblem {
+  title: string
+  difficulty: "Easy" | "Medium" | "Hard"
+  category: string
+  description: string
+  url: string
+}
+
 /**
  * Calculate top percentile from LeetCode ranking
  * LeetCode has approximately 20 million users (as of 2024)
@@ -120,6 +134,20 @@ const calculateTopPercentile = (ranking: number, totalUsers: number = 20000000):
 };
 
 export default function LeetCodePage() {
+  // Custom tooltip state
+  const [tooltip, setTooltip] = useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    content: { date: string; submissions: number };
+  }>({
+    visible: false,
+    x: 0,
+    y: 0,
+    content: { date: '', submissions: 0 }
+  });
+
+  const heatmapRef = useRef<HTMLDivElement>(null);
 
   const [topicAnalysis, setTopicAnalysis] = useState<TopicAnalysis[]>([
     {
@@ -395,6 +423,19 @@ export default function LeetCodePage() {
           // Keep mock data if activity fetch fails
         }
         
+        // Fetch recommended problems from backend
+        try {
+          const recommendationsResponse = await fetch(`http://localhost:5005/api/leetcode/${username}/suggestions`);
+          const recommendationsData = await recommendationsResponse.json();
+          
+          if (recommendationsResponse.ok && recommendationsData.recommended_problems) {
+            setRecommendedProblems(recommendationsData.recommended_problems);
+          }
+        } catch (recommendationError) {
+          console.error('Error fetching recommendations:', recommendationError);
+          // Keep empty array if recommendations fetch fails
+        }
+        
         localStorage.setItem("leetcode-connected", "true");
         localStorage.setItem("leetcode-username", username);
         localStorage.setItem("leetcode-profile", JSON.stringify(profileData));
@@ -463,6 +504,8 @@ export default function LeetCodePage() {
       language: "Java",
     },
   ])
+
+  const [recommendedProblems, setRecommendedProblems] = useState<RecommendedProblem[]>([])
 
   // Mock data - in real app, this would come from LeetCode API
   const mockProfile: LeetCodeProfile = {
@@ -558,6 +601,42 @@ export default function LeetCodePage() {
       setProfile(JSON.parse(savedProfile))
     }
   }, [router])
+
+  // Custom tooltip effect for heatmap
+  useEffect(() => {
+    const handleHeatmapHover = (event: MouseEvent) => {
+      const target = event.target as SVGElement;
+      if (target && target.tagName === 'rect' && target.hasAttribute('data-date')) {
+        const date = target.getAttribute('data-date') || '';
+        const submissions = parseInt(target.getAttribute('data-submissions') || '0');
+        
+        if (date && heatmapRef.current) {
+          const rect = heatmapRef.current.getBoundingClientRect();
+          setTooltip({
+            visible: true,
+            x: event.clientX - rect.left,
+            y: event.clientY - rect.top - 40,
+            content: { date, submissions }
+          });
+        }
+      }
+    };
+
+    const handleHeatmapLeave = () => {
+      setTooltip(prev => ({ ...prev, visible: false }));
+    };
+
+    const heatmapElement = heatmapRef.current;
+    if (heatmapElement) {
+      heatmapElement.addEventListener('mouseover', handleHeatmapHover);
+      heatmapElement.addEventListener('mouseleave', handleHeatmapLeave);
+      
+      return () => {
+        heatmapElement.removeEventListener('mouseover', handleHeatmapHover);
+        heatmapElement.removeEventListener('mouseleave', handleHeatmapLeave);
+      };
+    }
+  }, [isConnected])
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -958,45 +1037,38 @@ export default function LeetCodePage() {
                   </CardHeader>
                   <CardContent className="pt-0">
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between p-3 border rounded-lg bg-yellow-50">
-                        <div>
-                          <p className="font-medium text-gray-900 text-sm">Binary Tree Maximum Path Sum</p>
-                          <div className="flex items-center space-x-2 mt-1">
-                            <Badge className="text-xs bg-red-100 text-red-800">Hard</Badge>
-                            <span className="text-xs text-gray-500">Tree</span>
+                      {recommendedProblems.length > 0 ? (
+                        recommendedProblems.map((problem, index) => (
+                          <div key={index} className="flex items-center justify-between p-3 border rounded-lg bg-gradient-to-r from-blue-50 to-purple-50">
+                            <div>
+                              <p className="font-medium text-gray-900 text-sm">{problem.title}</p>
+                              <div className="flex items-center space-x-2 mt-1">
+                                <Badge className={`text-xs ${
+                                  problem.difficulty === "Easy" 
+                                    ? "bg-green-100 text-green-800"
+                                    : problem.difficulty === "Medium"
+                                      ? "bg-yellow-100 text-yellow-800"
+                                      : "bg-red-100 text-red-800"
+                                }`}>
+                                  {problem.difficulty}
+                                </Badge>
+                                <span className="text-xs text-gray-500">{problem.category}</span>
+                              </div>
+                              <p className="text-xs text-gray-600 mt-1">{problem.description}</p>
+                            </div>
+                            <Button size="sm" variant="ghost" asChild>
+                              <a href={problem.url} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="h-4 w-4" />
+                              </a>
+                            </Button>
                           </div>
-                          <p className="text-xs text-gray-600 mt-1">Improve tree/recursion mastery</p>
+                        ))
+                      ) : (
+                        <div className="text-center py-4 text-gray-500">
+                          <p className="text-sm">No recommendations available yet.</p>
+                          <p className="text-xs">Connect your LeetCode account to get personalized suggestions.</p>
                         </div>
-                        <Button size="sm" variant="ghost">
-                          <ExternalLink className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <div className="flex items-center justify-between p-3 border rounded-lg bg-blue-50">
-                        <div>
-                          <p className="font-medium text-gray-900 text-sm">Longest Substring Without Repeating Characters</p>
-                          <div className="flex items-center space-x-2 mt-1">
-                            <Badge className="text-xs bg-yellow-100 text-yellow-800">Medium</Badge>
-                            <span className="text-xs text-gray-500">String</span>
-                          </div>
-                          <p className="text-xs text-gray-600 mt-1">Practice sliding window technique</p>
-                        </div>
-                        <Button size="sm" variant="ghost">
-                          <ExternalLink className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <div className="flex items-center justify-between p-3 border rounded-lg bg-green-50">
-                        <div>
-                          <p className="font-medium text-gray-900 text-sm">Word Ladder</p>
-                          <div className="flex items-center space-x-2 mt-1">
-                            <Badge className="text-xs bg-yellow-100 text-yellow-800">Medium</Badge>
-                            <span className="text-xs text-gray-500">Graph</span>
-                          </div>
-                          <p className="text-xs text-gray-600 mt-1">Strengthen BFS/graph skills</p>
-                        </div>
-                        <Button size="sm" variant="ghost">
-                          <ExternalLink className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      )}
                     </div>
                   </CardContent>
                 </div>
@@ -1145,30 +1217,54 @@ export default function LeetCodePage() {
                   </CardHeader>
                   <CardContent>
                     <div className="flex flex-col items-center justify-center">
-                      <div style={{ width: '100%', maxWidth: 800 }}>
-                        <CalendarHeatmap
-                          startDate={submissionData.length > 0 ? submissionData[0].date : new Date(2024, 0, 1).toISOString().slice(0, 10)}
-                          endDate={submissionData.length > 0 ? submissionData[submissionData.length - 1].date : new Date(2024, 11, 31).toISOString().slice(0, 10)}
-                          values={submissionData.map((d) => ({ date: d.date, count: d.count }))}
-                          classForValue={(value: { date: string; count: number } | undefined) => {
-                            if (!value || value.count === 0) return "color-empty"
-                            if (value.count < 2) return "color-scale-1"
-                            if (value.count < 4) return "color-scale-2"
-                            if (value.count < 6) return "color-scale-3"
-                            return "color-scale-4"
-                          }}
-                          tooltipDataAttrs={(value: { date: string; count: number } | undefined) => {
-                            if (!value || !value.date) return null;
-                            // Format date for better readability
-                            const dateObj = new Date(value.date);
-                            const formatted = dateObj.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-                            return {
-                              'data-tip': `<div style='font-size:13px;'><strong>${formatted}</strong><br/>Submissions: <b>${value.count || 0}</b></div>`
-                            };
-                          }}
-                          showWeekdayLabels={false}
-                        />
-                      </div>
+                      <TooltipProvider>
+                        <div ref={heatmapRef} style={{ width: '100%', maxWidth: 800, position: 'relative' }}>
+                          <CalendarHeatmap
+                            startDate={submissionData.length > 0 ? submissionData[0].date : new Date(2024, 0, 1).toISOString().slice(0, 10)}
+                            endDate={submissionData.length > 0 ? submissionData[submissionData.length - 1].date : new Date(2024, 11, 31).toISOString().slice(0, 10)}
+                            values={submissionData.map((d) => ({ date: d.date, count: d.count }))}
+                            classForValue={(value: { date: string; count: number } | undefined) => {
+                              if (!value || value.count === 0) return "color-empty"
+                              if (value.count < 2) return "color-scale-1"
+                              if (value.count < 4) return "color-scale-2"
+                              if (value.count < 6) return "color-scale-3"
+                              return "color-scale-4"
+                            }}
+                            tooltipDataAttrs={(value: { date: string; count: number } | undefined) => {
+                              if (!value || !value.date) return null;
+                              // Format date for better readability
+                              const dateObj = new Date(value.date);
+                              const dayName = dateObj.toLocaleDateString(undefined, { weekday: 'long' });
+                              const formatted = dateObj.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+                              return {
+                                'data-date': `${dayName}, ${formatted}`,
+                                'data-submissions': value.count || 0,
+                                'title': `${dayName}, ${formatted}: ${value.count || 0} submission${(value.count || 0) !== 1 ? 's' : ''}`
+                              };
+                            }}
+                            showWeekdayLabels={false}
+                          />
+                          
+                          {/* Custom tooltip */}
+                          {tooltip.visible && (
+                            <div
+                              className="absolute bg-gray-900 text-white text-sm rounded-lg px-3 py-2 pointer-events-none z-50 shadow-lg"
+                              style={{
+                                left: tooltip.x,
+                                top: tooltip.y,
+                                transform: 'translateX(-50%)',
+                              }}
+                            >
+                              <div className="font-semibold">
+                                {tooltip.content.submissions} submission{tooltip.content.submissions !== 1 ? 's' : ''}
+                              </div>
+                              <div className="text-xs opacity-90">
+                                {tooltip.content.date}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </TooltipProvider>
                       {/* Tooltip style for react-tooltip (if used) */}
                       <style>{`
                         /* Container styling */
@@ -1208,10 +1304,11 @@ export default function LeetCodePage() {
                         
                         /* Hover effects */
                         .react-calendar-heatmap rect:hover {
-                          stroke: #1f2937 !important;
-                          stroke-width: 2px !important;
-                          filter: brightness(0.9);
+                          stroke: #6b7280 !important;
+                          stroke-width: 1.5px !important;
                           cursor: pointer;
+                          opacity: 0.8;
+                          transition: all 0.15s ease;
                         }
                         
                         /* Month labels styling */
@@ -1255,25 +1352,6 @@ export default function LeetCodePage() {
                         .react-calendar-heatmap .react-calendar-heatmap-month-separator {
                           stroke: transparent;
                           stroke-width: 0;
-                        }
-                        
-                        /* Custom tooltip style */
-                        [data-tip] {
-                          position: relative;
-                        }
-                        .__react_component_tooltip {
-                          font-size: 12px !important;
-                          background: #1f2937 !important;
-                          color: #ffffff !important;
-                          border: none !important;
-                          border-radius: 6px !important;
-                          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-                          padding: 8px 12px !important;
-                          z-index: 9999;
-                          font-weight: 500;
-                        }
-                        .__react_component_tooltip:after {
-                          border-top-color: #1f2937 !important;
                         }
                         
                         /* Responsive adjustments */
