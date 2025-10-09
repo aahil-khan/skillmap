@@ -11,8 +11,9 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ArrowLeft, ArrowRight, Menu, User, AlertCircle } from "lucide-react"
+import { ErrorAlert } from "@/components/ui/error-alert"
+import { ValidationErrors, useValidationErrors } from "@/components/ui/validation-errors"
+import { ArrowLeft, ArrowRight, Menu, User } from "lucide-react"
 import Link from "next/link"
 
 const SKILL_OPTIONS = [
@@ -207,10 +208,11 @@ export default function OnboardingPage() {
 
         {/* Error Alert */}
         {error && (
-          <Alert variant="destructive" className="mb-6 animate-slideInDown">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
+          <ErrorAlert
+            error={error}
+            onDismiss={() => setError("")}
+            className="mb-6"
+          />
         )}
 
         {step === 1 && (

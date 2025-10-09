@@ -107,8 +107,9 @@ export default function DashboardLayout({
         
         const data = await response.json()
         console.log(data)
-        if (data.success && data.atsScore && data.atsScore.ats_score) {
-          setTargetScore(data.atsScore.ats_score)
+        // Backend now returns: { success: true, data: { ats_score: 70 } }
+        if (data.success && data.data && data.data.ats_score) {
+          setTargetScore(data.data.ats_score)
           setScoreError(false)
         } else {
           setScoreError(true)
@@ -202,8 +203,9 @@ export default function DashboardLayout({
       
       const data = await response.json()
       console.log(data)
-      if (data.success && data.atsScore && data.atsScore.ats_score) {
-        setTargetScore(data.atsScore.ats_score)
+      // Backend now returns: { success: true, data: { ats_score: 70 } }
+      if (data.success && data.data && data.data.ats_score) {
+        setTargetScore(data.data.ats_score)
         setScoreError(false)
       } else {
         setScoreError(true)

@@ -6,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Brain, CheckCircle, AlertTriangle, TrendingUp, Menu, User, ArrowLeft, ArrowRight, AlertCircle } from "lucide-react"
+import { ErrorAlert } from "@/components/ui/error-alert"
+import { Brain, CheckCircle, AlertTriangle, TrendingUp, ArrowLeft, ArrowRight, Menu, User } from "lucide-react"
 import { api, APIErrorClass, isAuthError } from "@/lib/api-error-handler"
 import { getBackendUrl, BACKEND_ENDPOINTS } from "@/lib/config"
 import Link from "next/link"
@@ -159,10 +159,11 @@ export default function ResultsPage() {
           </div>
         </header>
         <div className="container mx-auto px-4 py-16 max-w-2xl">
-          <Alert variant="destructive" className="mb-6">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
+          <ErrorAlert
+            error={error}
+            onDismiss={() => setError("")}
+            className="mb-6"
+          />
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-16">
               <AlertTriangle className="h-16 w-16 text-red-500 mb-4" />

@@ -106,8 +106,8 @@ export async function apiFetch<T = any>(
   options: RequestInit = {}
 ): Promise<T> {
   try {
-    // Get auth token from localStorage (TODO: Move to secure storage)
-    const token = localStorage.getItem('supabase.auth.token');
+    // Get auth token from localStorage (stored as 'sb-jwt' on login)
+    const token = localStorage.getItem('sb-jwt');
     
     // Add default headers
     const headers = new Headers(options.headers);

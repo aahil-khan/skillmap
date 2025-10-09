@@ -9,8 +9,8 @@ import { getBackendUrl, BACKEND_ENDPOINTS } from "@/lib/config"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Menu, User, Upload, FileText, ArrowRight, ArrowLeft, AlertCircle } from "lucide-react"
+import { ErrorAlert } from "@/components/ui/error-alert"
+import { Upload, FileText, ArrowRight, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import Navbar from "@/components/Navbar"
 
@@ -143,10 +143,11 @@ export default function UploadPage() {
             
             {/* Error Alert */}
             {error && (
-              <Alert variant="destructive" className="animate-slideInDown">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
+              <ErrorAlert
+                error={error}
+                onDismiss={() => setError("")}
+                onRetry={file ? handleUpload : undefined}
+              />
             )}
 
             {/* Upload Area */}

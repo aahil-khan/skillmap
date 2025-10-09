@@ -7,13 +7,18 @@ export async function GET(
   try {
     const { username } = params
     
+    console.log('=== Next.js API Route: Fetching stats for:', username);
+    
     // This is a public API, no authentication required
     const backendResponse = await fetch(`http://localhost:5005/api/leetcode/${username}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
       },
+      cache: 'no-store', // Disable caching
     })
+    
+    console.log('Backend response status:', backendResponse.status);
     
     if (!backendResponse.ok) {
       const errorText = await backendResponse.text()
@@ -33,6 +38,13 @@ export async function GET(
     }
     
     const data = await backendResponse.json()
+    console.log('=== Backend returned (stats) ===');
+    console.log('Type:', typeof data);
+    console.log('Has success?:', data.success);
+    console.log('Has data?:', !!data.data);
+    console.log('Data keys:', data.data ? Object.keys(data.data) : 'no data');
+    console.log('===============================');
+    
     return NextResponse.json(data)
     
   } catch (error) {

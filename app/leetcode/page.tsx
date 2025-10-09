@@ -216,12 +216,23 @@ export default function LeetCodePage() {
       // Fetch basic LeetCode data
       const data = await api.get(`/api/leetcode/${username}`)
       
-      console.log('API Response:', data); // Debug log
+      console.log('=== DEBUG: Basic Stats Response ===');
+      console.log('Type:', typeof data);
+      console.log('Data:', data);
+      console.log('Keys:', data ? Object.keys(data) : 'null');
+      console.log('===================================');
       
       // Fetch detailed profile information
       let detailedProfile = {};
       try {
         const profileData = await api.get(`/api/leetcode/${username}/profile`)
+        
+        console.log('=== DEBUG: Profile Response ===');
+        console.log('Type:', typeof profileData);
+        console.log('Data:', profileData);
+        console.log('Keys:', profileData ? Object.keys(profileData) : 'null');
+        console.log('Has name?:', profileData?.name);
+        console.log('===============================');
         
         detailedProfile = {
           name: profileData.name,

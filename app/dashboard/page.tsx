@@ -63,8 +63,9 @@ export default function DashboardOverviewPage() {
         
         console.log('✅ ATS Score data received:', data)
         
-        if (data.success && data.atsScore && data.atsScore.ats_score) {
-          setTargetScore(data.atsScore.ats_score)
+        // After handleAPIResponse, data is already unwrapped: { ats_score: 70 }
+        if (data && data.ats_score) {
+          setTargetScore(data.ats_score)
           setScoreError(false)
         } else {
           console.error('Invalid API response structure:', data)
@@ -202,8 +203,9 @@ export default function DashboardOverviewPage() {
       
       console.log('Retry - API Response data:', data)
       
-      if (data.success && data.atsScore && data.atsScore.ats_score) {
-        setTargetScore(data.atsScore.ats_score)
+      // After handleAPIResponse, data is already unwrapped: { ats_score: 70 }
+      if (data && data.ats_score) {
+        setTargetScore(data.ats_score)
         setScoreError(false)
       } else {
         console.error('Retry - Invalid API response structure:', data)
