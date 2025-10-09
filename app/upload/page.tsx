@@ -60,18 +60,28 @@ export default function UploadPage() {
     setIsUploading(true)
 
     try {
-      // Debug: Check if JWT token exists
-      const token = localStorage.getItem('sb-jwt')
-      console.log('JWT token for upload:', token ? 'exists' : 'missing')
-      console.log('Token preview:', token ? token.substring(0, 20) + '...' : 'no token')
+      // Get the Supabase session token
+      const { supabase } = await import('@/lib/supabase')
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      
+      if (sessionError || !session?.access_token) {
+        console.error('Session error or no token:', sessionError)
+        throw new Error('Authentication required. Please log in again.')
+      }
+
+      console.log('JWT token for upload: exists')
+      console.log('Token preview:', session.access_token.substring(0, 20) + '...')
 
       // Create FormData to send the file
       const formData = new FormData()
       formData.append('resume', file)
 
-      // Send file to backend server for processing
-      const response = await apiFetch('http://localhost:5005/upload-resume', {
+      // Send file to our Next.js API proxy route
+      const response = await fetch('/api/upload-resume', {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
         body: formData,
       })
 

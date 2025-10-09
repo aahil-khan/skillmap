@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
+import { supabase } from "@/lib/supabase"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -209,7 +210,7 @@ export default function LeetCodePage() {
     setIsLoading(true);
     
     try {
-      const response = await fetch(`http://localhost:5005/api/leetcode/${username}`);
+      const response = await fetch(`/api/leetcode/${username}`);
       const data = await response.json();
       
       console.log('API Response:', data); // Debug log
@@ -218,7 +219,7 @@ export default function LeetCodePage() {
         // Fetch detailed profile information
         let detailedProfile = {};
         try {
-          const profileResponse = await fetch(`http://localhost:5005/api/leetcode/${username}/profile`);
+          const profileResponse = await fetch(`/api/leetcode/${username}/profile`);
           const profileData = await profileResponse.json();
           
           if (profileResponse.ok) {
@@ -290,7 +291,7 @@ export default function LeetCodePage() {
         
         // Fetch recent submissions from backend
         try {
-          const submissionsResponse = await fetch(`http://localhost:5005/api/leetcode/${username}/submission?limit=5`);
+          const submissionsResponse = await fetch(`/api/leetcode/${username}/submission?limit=5`);
           const submissionsData = await submissionsResponse.json();
           
           if (submissionsResponse.ok) {
@@ -314,7 +315,7 @@ export default function LeetCodePage() {
         
         // Fetch languages data from backend
         try {
-          const languagesResponse = await fetch(`http://localhost:5005/api/leetcode/${username}/languages`);
+          const languagesResponse = await fetch(`/api/leetcode/${username}/languages`);
           const languagesData = await languagesResponse.json();
           
           if (languagesResponse.ok) {
@@ -340,7 +341,7 @@ export default function LeetCodePage() {
         
         // Fetch topics data from backend
         try {
-          const topicsResponse = await fetch(`http://localhost:5005/api/leetcode/${username}/topics`);
+          const topicsResponse = await fetch(`/api/leetcode/${username}/topics`);
           const topicsData = await topicsResponse.json();
           
           if (topicsResponse.ok) {
@@ -382,7 +383,7 @@ export default function LeetCodePage() {
         
         // Fetch activity data from backend
         try {
-          const activityResponse = await fetch(`http://localhost:5005/api/leetcode/${username}/activity`);
+          const activityResponse = await fetch(`/api/leetcode/${username}/activity`);
           const activityData = await activityResponse.json();
           
           if (activityResponse.ok) {
@@ -425,7 +426,7 @@ export default function LeetCodePage() {
         
         // Fetch recommended problems from backend
         try {
-          const recommendationsResponse = await fetch(`http://localhost:5005/api/leetcode/${username}/suggestions`);
+          const recommendationsResponse = await fetch(`/api/leetcode/${username}/suggestions`);
           const recommendationsData = await recommendationsResponse.json();
           
           if (recommendationsResponse.ok && recommendationsData.recommended_problems) {
@@ -576,30 +577,54 @@ export default function LeetCodePage() {
   }
 
   useEffect(() => {
-    // Check if user is logged in
-    const userData = localStorage.getItem("skillmap-user")
-    if (!userData) {
-      router.push("/auth")
-      return
+    // Check if user is logged in using Supabase session
+    const checkAuth = async () => {
+      const { data: { session }, error } = await supabase.auth.getSession()
+      
+      if (!session?.user) {
+        router.push("/auth")
+        return
+      }
+
+      // Get user details from either custom table or auth data
+      let userData = null
+      const { data: customUserData } = await supabase
+        .from('users')
+        .select('email, full_name')
+        .eq('id', session.user.id)
+        .single()
+
+      if (customUserData) {
+        userData = {
+          name: customUserData.full_name,
+          email: customUserData.email
+        }
+      } else {
+        userData = {
+          name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || "User",
+          email: session.user.email || ""
+        }
+      }
+
+      setUserProfile({
+        name: userData.name,
+        email: userData.email,
+        profilePicture: undefined,
+      })
+
+      // Check if LeetCode is already connected
+      const connected = localStorage.getItem("leetcode-connected")
+      const savedUsername = localStorage.getItem("leetcode-username")
+      const savedProfile = localStorage.getItem("leetcode-profile")
+
+      if (connected && savedUsername && savedProfile) {
+        setIsConnected(true)
+        setUsername(savedUsername)
+        setProfile(JSON.parse(savedProfile))
+      }
     }
 
-    const user = JSON.parse(userData)
-    setUserProfile({
-      name: user.name || "John Doe",
-      email: user.email,
-      profilePicture: user.profilePicture,
-    })
-
-    // Check if LeetCode is already connected
-    const connected = localStorage.getItem("leetcode-connected")
-    const savedUsername = localStorage.getItem("leetcode-username")
-    const savedProfile = localStorage.getItem("leetcode-profile")
-
-    if (connected && savedUsername && savedProfile) {
-      setIsConnected(true)
-      setUsername(savedUsername)
-      setProfile(JSON.parse(savedProfile))
-    }
+    checkAuth()
   }, [router])
 
   // Custom tooltip effect for heatmap

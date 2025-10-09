@@ -74,10 +74,20 @@ export default function ResultsPage() {
           return
         }
 
-      // Send request to skill gap analysis API
-      const response = await apiFetch('http://localhost:5005/analyze-skill-gaps', {
+      // Get the Supabase session token
+      const { supabase } = await import('@/lib/supabase')
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      
+      if (sessionError || !session?.access_token) {
+        console.error('Session error or no token:', sessionError)
+        throw new Error('Authentication required')
+      }
+
+      // Send request to our Next.js API proxy route
+      const response = await fetch('/api/analyze-skill-gaps', {
         method: 'POST',
         headers: {
+          'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ name: profile.name }),

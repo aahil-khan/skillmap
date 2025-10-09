@@ -79,8 +79,8 @@ export default function DashboardOverviewPage() {
           throw new Error('No authentication token available')
         }
         
-        // Use the session token directly for the API call
-        const response = await fetch('http://localhost:5005/ats-score', {
+        // Call our Next.js API proxy route instead of the backend directly
+        const response = await fetch('/api/ats-score', {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${session.access_token}`,
@@ -91,13 +91,12 @@ export default function DashboardOverviewPage() {
         console.log('📡 API Response:', {
           status: response.status,
           statusText: response.statusText,
-          headers: Object.fromEntries(response.headers.entries())
         })
         
         if (!response.ok) {
-          const errorText = await response.text()
-          console.error('❌ API Error Response:', errorText)
-          throw new Error(`API request failed: ${response.status} ${response.statusText}`)
+          const errorData = await response.json()
+          console.error('❌ API Error Response:', errorData)
+          throw new Error(errorData.error || `API request failed: ${response.status}`)
         }
         
         const data = await response.json()
@@ -227,16 +226,31 @@ export default function DashboardOverviewPage() {
     setScoreError(false)
     setResumeScore(0)
     
-    // Check if we have a token
-    const token = localStorage.getItem('sb-jwt')
-    console.log('Retry - Token exists:', !!token)
-    
     try {
-      const response = await apiFetch('http://localhost:5005/ats-score')
+      console.log('🔄 Retrying ATS score fetch...')
+      
+      // Get the current Supabase session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      
+      if (sessionError || !session?.access_token) {
+        console.error('❌ Session error or no token')
+        throw new Error('Authentication required')
+      }
+      
+      // Call our Next.js API proxy route
+      const response = await fetch('/api/ats-score', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+      
       console.log('Retry - API Response status:', response.status)
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        const errorData = await response.json()
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
       }
       
       const data = await response.json()
