@@ -5,6 +5,7 @@ import type React from "react"
 import { useState, useRef, useEffect } from "react"
 import { useAuthRedirect } from "@/hooks/useAuthRedirect"
 import { api, APIErrorClass, isAuthError } from "@/lib/api-error-handler"
+import { getBackendUrl, BACKEND_ENDPOINTS } from "@/lib/config"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -67,7 +68,7 @@ export default function UploadPage() {
       formData.append('resume', file)
 
       // Use the new API client with automatic auth token injection
-      const data = await api.upload('http://localhost:5005/upload-resume', formData)
+      const data = await api.upload(getBackendUrl(BACKEND_ENDPOINTS.UPLOAD_RESUME), formData)
 
       // Store profile data
       localStorage.setItem("profile-data", JSON.stringify(data.profile || data))

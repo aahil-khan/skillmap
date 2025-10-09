@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { api, APIErrorClass, formatValidationErrors, isAuthError } from "@/lib/api-error-handler"
+import { getBackendUrl, BACKEND_ENDPOINTS } from "@/lib/config"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -121,7 +122,7 @@ export default function OnboardingPage() {
       }
 
       // Call API to save user profile
-      const result = await api.post('http://localhost:5005/user-profile', profileData)
+      const result = await api.post(getBackendUrl(BACKEND_ENDPOINTS.USER_PROFILE), profileData)
       
       console.log('Profile saved:', result)
 

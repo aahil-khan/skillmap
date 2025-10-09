@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Brain, CheckCircle, AlertTriangle, TrendingUp, Menu, User, ArrowLeft, ArrowRight, AlertCircle } from "lucide-react"
 import { api, APIErrorClass, isAuthError } from "@/lib/api-error-handler"
+import { getBackendUrl, BACKEND_ENDPOINTS } from "@/lib/config"
 import Link from "next/link"
 
 interface SkillItem {
@@ -72,7 +73,7 @@ export default function ResultsPage() {
       }
 
       // Use new API client to fetch skill gap analysis
-      const data: AnalysisResult = await api.get('http://localhost:5005/analyze-skill-gaps')
+      const data: AnalysisResult = await api.get(getBackendUrl(BACKEND_ENDPOINTS.ANALYZE_SKILL_GAPS))
       
       setAnalysis(data)
       
