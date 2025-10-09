@@ -6,8 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { Brain, CheckCircle, AlertTriangle, TrendingUp, Menu, User, ArrowLeft, ArrowRight } from "lucide-react"
-import { apiFetch } from "@/lib/utils"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Brain, CheckCircle, AlertTriangle, TrendingUp, Menu, User, ArrowLeft, ArrowRight, AlertCircle } from "lucide-react"
+import { api, APIErrorClass, isAuthError } from "@/lib/api-error-handler"
 import Link from "next/link"
 
 interface SkillItem {
@@ -65,119 +66,39 @@ export default function ResultsPage() {
 
       const profile = JSON.parse(profileData)
       
-      // Use environment variable or fallback to dummy URL
-      const skillGapApiUrl = process.env.NEXT_PUBLIC_SKILL_GAP_API_URL || 'https://api.example.com/find-skill-gaps'
+      if (!profile.name) {
+        setError("Profile data is incomplete. Please upload your resume again.")
+        return
+      }
+
+      // Use new API client to fetch skill gap analysis
+      const data: AnalysisResult = await api.get('http://localhost:5005/analyze-skill-gaps')
       
-      try {
-        if (!profile.name) {
-          setError("Profile data is incomplete. Please upload your resume again.")
+      setAnalysis(data)
+      
+    } catch (err) {
+      console.error('Error fetching skill gap analysis:', err)
+      
+      if (err instanceof APIErrorClass) {
+        // Handle authentication errors
+        if (isAuthError(err)) {
+          setError('Your session has expired. Please log in again.')
+          setTimeout(() => router.push('/auth'), 2000)
           return
         }
-
-      // Get the Supabase session token
-      const { supabase } = await import('@/lib/supabase')
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        
+        // Display user-friendly error message
+        setError(err.getUserMessage())
+        
+        // Log request ID for debugging
+        if (err.requestId) {
+          console.error('Request ID for debugging:', err.requestId)
+        }
+      } else {
+        setError('An unexpected error occurred while analyzing your skills.')
+      }
       
-      if (sessionError || !session?.access_token) {
-        console.error('Session error or no token:', sessionError)
-        throw new Error('Authentication required')
-      }
-
-      // Send request to our Next.js API proxy route
-      const response = await fetch('/api/analyze-skill-gaps', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ name: profile.name }),
-      })
-
-        if (!response.ok) {
-          throw new Error('Failed to analyze skill gaps')
-        }
-
-        const data: AnalysisResult = await response.json()
-        setAnalysis(data)
-      } catch (apiError) {
-        console.warn('API call failed, using mock data:', apiError)
-        
-        // Fallback to mock analysis data if API fails
-        const mockAnalysis: AnalysisResult = {
-          success: true,
-          user: profile.name || "Demo User",
-          analysis: [
-            {
-              detected_category: "Web Development",
-              matched_taxonomy_category: "Web Development",
-              confidence: 0.85,
-              similarity: 1,
-              skills: {
-                gaps: [
-                  {
-                    name: "Next.js",
-                    description: "Building full-stack React apps with routing, API routes, and SSR/SSG.",
-                    priority: "high"
-                  },
-                  {
-                    name: "TypeScript",
-                    description: "Adding type safety to JavaScript applications.",
-                    priority: "medium"
-                  }
-                ],
-                present: [
-                  {
-                    name: "JavaScript",
-                    user_level: "intermediate",
-                    description: "Writing interactive frontend logic and working with the DOM.",
-                    recommendation: "Strong foundation - continue building on this"
-                  },
-                  {
-                    name: "React",
-                    user_level: "intermediate", 
-                    description: "Creating dynamic user interfaces using components and hooks.",
-                    recommendation: "Good understanding - ready for advanced concepts"
-                  }
-                ],
-                needs_improvement: [
-                  {
-                    name: "CSS",
-                    user_level: "beginner",
-                    description: "Styling web pages with responsive design and modern CSS features.",
-                    recommendation: "Focus on learning flexbox, grid, and responsive design"
-                  }
-                ]
-              }
-            }
-          ],
-          summary: `Based on your goal to "${profile.goal || 'become a full-stack developer'}", here's your personalized learning path:
-
-<strong>Your Strengths:</strong>
-You have a solid foundation in JavaScript and React, which are core technologies for modern web development.
-
-<strong>Priority Areas:</strong>
-• <strong>Next.js</strong> - Learn this popular React framework to build full-stack applications
-• <strong>TypeScript</strong> - Add type safety to make your code more robust
-
-<strong>Skills to Improve:</strong>
-• <strong>CSS</strong> - Strengthen your styling skills with modern CSS techniques
-
-<strong>Recommended Learning Path:</strong>
-1. Practice more CSS with flexbox and grid layouts
-2. Learn TypeScript fundamentals
-3. Build a project with Next.js
-4. Focus on responsive design principles
-
-This learning path will help you achieve your goal of becoming a well-rounded web developer.`,
-          categories_analyzed: 1,
-          user_goal: profile.goal || "Become a full-stack web developer"
-        }
-        
-        setAnalysis(mockAnalysis)
-      }
-    } catch (error: any) {
-      console.error('Error fetching skill gap analysis:', error)
-      setError(error.message || 'An error occurred while analyzing your skills')
+      // Note: Removed mock data fallback - errors should be shown to user
     } finally {
       setIsLoading(false)
     }
@@ -237,6 +158,10 @@ This learning path will help you achieve your goal of becoming a well-rounded we
           </div>
         </header>
         <div className="container mx-auto px-4 py-16 max-w-2xl">
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-16">
               <AlertTriangle className="h-16 w-16 text-red-500 mb-4" />

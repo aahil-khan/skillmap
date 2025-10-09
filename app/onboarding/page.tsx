@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { api, APIErrorClass, formatValidationErrors, isAuthError } from "@/lib/api-error-handler"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -9,7 +10,8 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
-import { ArrowLeft, ArrowRight, Menu, User } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { ArrowLeft, ArrowRight, Menu, User, AlertCircle } from "lucide-react"
 import Link from "next/link"
 
 const SKILL_OPTIONS = [
@@ -78,6 +80,8 @@ export default function OnboardingPage() {
   const [projects, setProjects] = useState("")
   const [goal, setGoal] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string>("")
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
 
   const addSkill = (skillName: string) => {
     if (!skills.find((s) => s.name === skillName)) {
@@ -94,20 +98,76 @@ export default function OnboardingPage() {
   }
 
   const handleSubmit = async () => {
-    if (!goal.trim()) return
-
-    setIsLoading(true)
-
-    const userData = {
-      skills,
-      projects,
-      goal,
-      timestamp: Date.now(),
+    if (!goal.trim()) {
+      setValidationErrors({ goal: "Goal is required" })
+      return
     }
 
-    localStorage.setItem("skillmap-data", JSON.stringify(userData))
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    router.push("/results")
+    setIsLoading(true)
+    setError("")
+    setValidationErrors({})
+
+    try {
+      // Prepare user profile data
+      const profileData = {
+        name: "User", // You might want to collect this in step 1
+        technical_skills: skills.map(skill => ({
+          category: "Skills", // You might want to categorize these
+          skills: [skill.name],
+          level: skill.level
+        })),
+        goal: goal.trim(),
+        projects: projects ? [{ description: projects }] : undefined
+      }
+
+      // Call API to save user profile
+      const result = await api.post('http://localhost:5005/user-profile', profileData)
+      
+      console.log('Profile saved:', result)
+
+      // Store data locally for immediate use
+      const userData = {
+        skills,
+        projects,
+        goal,
+        timestamp: Date.now(),
+      }
+      localStorage.setItem("skillmap-data", JSON.stringify(userData))
+      
+      // Navigate to results
+      router.push("/results")
+      
+    } catch (err) {
+      console.error('Error saving profile:', err)
+      
+      if (err instanceof APIErrorClass) {
+        // Handle authentication errors
+        if (isAuthError(err)) {
+          setError('Your session has expired. Please log in again.')
+          setTimeout(() => router.push('/auth'), 2000)
+          return
+        }
+        
+        // Handle validation errors
+        if (err.is('VALIDATION_ERROR')) {
+          const errors = formatValidationErrors(err)
+          setValidationErrors(errors)
+          setError('Please check your input and try again.')
+        } else {
+          // Display user-friendly error message
+          setError(err.getUserMessage())
+        }
+        
+        // Log request ID for debugging
+        if (err.requestId) {
+          console.error('Request ID for debugging:', err.requestId)
+        }
+      } else {
+        setError('An unexpected error occurred. Please try again.')
+      }
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const progress = (step / 3) * 100
@@ -143,6 +203,14 @@ export default function OnboardingPage() {
             <Progress value={progress} className="w-32 bg-gray-200" />
           </div>
         </div>
+
+        {/* Error Alert */}
+        {error && (
+          <Alert variant="destructive" className="mb-6 animate-slideInDown">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
         {step === 1 && (
           <Card className="shadow-lg border-0 rounded-2xl">
@@ -279,10 +347,18 @@ export default function OnboardingPage() {
                   id="goal"
                   placeholder="e.g., 'I want to become a full-stack web developer' or 'I want to learn machine learning for data analysis'"
                   value={goal}
-                  onChange={(e) => setGoal(e.target.value)}
-                  className="mt-2 min-h-32 border-2 rounded-xl"
+                  onChange={(e) => {
+                    setGoal(e.target.value)
+                    if (validationErrors.goal) {
+                      setValidationErrors({ ...validationErrors, goal: '' })
+                    }
+                  }}
+                  className={`mt-2 min-h-32 border-2 rounded-xl ${validationErrors.goal ? 'border-red-500' : ''}`}
                   required
                 />
+                {validationErrors.goal && (
+                  <p className="text-red-500 text-sm mt-1">{validationErrors.goal}</p>
+                )}
               </div>
 
               <div className="flex justify-between pt-6">

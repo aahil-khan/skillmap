@@ -10,8 +10,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
 import { Target, Award, Clock, ArrowRight, Briefcase, BookOpen, Code, Settings, TrendingUp } from "lucide-react"
 import Link from "next/link"
 import { ChartContainer } from "@/components/ui/chart"
-import { apiFetch } from "@/lib/utils"
-import { supabase } from "@/lib/supabase"
+import { api, APIErrorClass, isAuthError } from "@/lib/api-error-handler"
 
 interface SkillCategory {
   name: string
@@ -59,47 +58,9 @@ export default function DashboardOverviewPage() {
       try {
         console.log('🔄 Starting ATS score fetch...')
         
-        // Get the current Supabase session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        // Call Next.js API proxy route using our api client
+        const data = await api.get('/api/ats-score')
         
-        console.log('🔐 Session check:', {
-          hasSession: !!session,
-          hasUser: !!session?.user,
-          hasAccessToken: !!session?.access_token,
-          tokenLength: session?.access_token?.length || 0
-        })
-        
-        if (sessionError) {
-          console.error('❌ Session error:', sessionError)
-          throw new Error('Authentication session error')
-        }
-        
-        if (!session?.access_token) {
-          console.error('❌ No access token in session')
-          throw new Error('No authentication token available')
-        }
-        
-        // Call our Next.js API proxy route instead of the backend directly
-        const response = await fetch('/api/ats-score', {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-        })
-        
-        console.log('📡 API Response:', {
-          status: response.status,
-          statusText: response.statusText,
-        })
-        
-        if (!response.ok) {
-          const errorData = await response.json()
-          console.error('❌ API Error Response:', errorData)
-          throw new Error(errorData.error || `API request failed: ${response.status}`)
-        }
-        
-        const data = await response.json()
         console.log('✅ ATS Score data received:', data)
         
         if (data.success && data.atsScore && data.atsScore.ats_score) {
@@ -111,7 +72,14 @@ export default function DashboardOverviewPage() {
           setTargetScore(null)
         }
       } catch (error) {
-        console.error('❌ Failed to fetch ATS score:', error)
+        if (error instanceof APIErrorClass) {
+          console.error('❌ API Error:', error.getUserMessage())
+          if (error.requestId) {
+            console.error('Request ID:', error.requestId)
+          }
+        } else {
+          console.error('❌ Failed to fetch ATS score:', error)
+        }
         setScoreError(true)
         setTargetScore(null)
       } finally {
@@ -229,31 +197,9 @@ export default function DashboardOverviewPage() {
     try {
       console.log('🔄 Retrying ATS score fetch...')
       
-      // Get the current Supabase session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      // Call Next.js API proxy route using our api client
+      const data = await api.get('/api/ats-score')
       
-      if (sessionError || !session?.access_token) {
-        console.error('❌ Session error or no token')
-        throw new Error('Authentication required')
-      }
-      
-      // Call our Next.js API proxy route
-      const response = await fetch('/api/ats-score', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-      })
-      
-      console.log('Retry - API Response status:', response.status)
-      
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
-      }
-      
-      const data = await response.json()
       console.log('Retry - API Response data:', data)
       
       if (data.success && data.atsScore && data.atsScore.ats_score) {
@@ -265,7 +211,14 @@ export default function DashboardOverviewPage() {
         setTargetScore(null)
       }
     } catch (error) {
-      console.error('Retry - Failed to fetch ATS score:', error)
+      if (error instanceof APIErrorClass) {
+        console.error('Retry - API Error:', error.getUserMessage())
+        if (error.requestId) {
+          console.error('Request ID:', error.requestId)
+        }
+      } else {
+        console.error('Retry - Failed to fetch ATS score:', error)
+      }
       setScoreError(true)
       setTargetScore(null)
     } finally {
