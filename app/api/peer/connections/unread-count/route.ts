@@ -1,3 +1,8 @@
+/**
+ * Next.js API Route: Get unread message count
+ * GET /api/peer/connections/unread-count
+ */
+
 import { NextResponse } from 'next/server';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5005';
@@ -13,19 +18,25 @@ export async function GET(request: Request) {
       );
     }
 
-    // Extract query parameters
-    const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status');
-    
-    const url = new URL(`${API_URL}/peer/connections`);
-    if (status) {
-      url.searchParams.append('status', status);
+    // Extract user_id from JWT token
+    const token = authHeader.replace('Bearer ', '');
+    let user_id;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      user_id = payload.sub;
+    } catch (e) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid token' },
+        { status: 401 }
+      );
     }
+
+    const url = new URL(`${API_URL}/peer/connections/unread-count`);
+    url.searchParams.append('user_id', user_id);
 
     const response = await fetch(url.toString(), {
       method: 'GET',
       headers: {
-        'Authorization': authHeader,
         'Content-Type': 'application/json'
       }
     });
@@ -36,8 +47,7 @@ export async function GET(request: Request) {
       return NextResponse.json(
         { 
           success: false, 
-          error: data.error || 'Failed to fetch connections',
-          details: data.details
+          error: data.error || 'Failed to fetch unread count',
         },
         { status: response.status }
       );
@@ -45,11 +55,11 @@ export async function GET(request: Request) {
 
     return NextResponse.json(data);
   } catch (error: any) {
-    console.error('[API /peer/connections] Error:', error.message);
+    console.error('[API /peer/connections/unread-count] Error:', error.message);
     return NextResponse.json(
       { 
         success: false, 
-        error: 'Failed to fetch connections',
+        error: 'Failed to fetch unread count',
         details: error.message
       },
       { status: 500 }

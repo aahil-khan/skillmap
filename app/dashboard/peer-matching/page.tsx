@@ -414,6 +414,8 @@ export default function PeerMatchingPage() {
     setLoadingMatches(true)
     try {
       const fetchedMatches = await getRecommendedMatches(matchType, 20)
+      console.log('[LOAD MATCHES] Received matches:', fetchedMatches)
+      console.log('[LOAD MATCHES] First match peerUserId:', fetchedMatches?.[0]?.peerUserId)
       setMatches(Array.isArray(fetchedMatches) ? fetchedMatches : [])
     } catch (error: any) {
       console.error("Failed to load matches:", error)
@@ -523,17 +525,36 @@ export default function PeerMatchingPage() {
     setAnimatingCards((prev) => new Set(prev).add(`${peerId}-connect`))
 
     // Determine connection type based on mode
-    const connectionType = mode === "resume" ? "project" : "dsa"
+    // Backend expects: project_partner, study_partner, mentorship, general
+    const connectionType: 'project_partner' | 'study_partner' = mode === "resume" ? "project_partner" : "study_partner"
+
+    console.log('[PEER MATCHING] Sending connection request:', { 
+      receiverId: peerId, 
+      connectionType 
+    })
 
     try {
-      await sendConnectionRequest({
+      const requestData = {
         receiverId: peerId,
         connectionType,
-      })
+      }
+      
+      console.log('[PEER MATCHING] Request data:', requestData)
+      
+      await sendConnectionRequest(requestData)
       
       toast({
-        title: "Connection request sent!",
-        description: "You'll be notified when they respond.",
+        title: "Connection request sent! 🎉",
+        description: "View your sent requests in the Connections tab.",
+        action: (
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => window.location.href = '/dashboard/connections?tab=sent'}
+          >
+            View Request
+          </Button>
+        ),
       })
     } catch (error: any) {
       console.error("Failed to send connection:", error)
@@ -542,6 +563,13 @@ export default function PeerMatchingPage() {
         description: error.message || "Please try again.",
         variant: "destructive",
       })
+      // Don't remove the card if it failed
+      setAnimatingCards((prev) => {
+        const newSet = new Set(prev)
+        newSet.delete(`${peerId}-connect`)
+        return newSet
+      })
+      return
     }
 
     setTimeout(() => {
@@ -710,7 +738,19 @@ export default function PeerMatchingPage() {
   }
 
   return (
-    <div className="min-h-screen skillmap-bg p-4">
+    <div className="min-h-screen skillmap-bg p-4 relative pb-24">
+      {/* Floating Connections Button - Improved visibility */}
+      <Link 
+        href="/dashboard/connections"
+        className="fixed bottom-6 right-6 z-[9999] bg-gradient-to-r from-[#8b1538] to-[#a01745] hover:from-[#7a1230] hover:to-[#8b1538] text-white px-6 py-3 rounded-full shadow-2xl transition-all hover:scale-105 flex items-center gap-3 group border-2 border-white/20"
+        style={{ backdropFilter: 'blur(10px)' }}
+      >
+        <MessageCircle className="h-5 w-5 flex-shrink-0" />
+        <span className="font-semibold text-sm">
+          My Connections
+        </span>
+      </Link>
+
       <div className="container mx-auto max-w-6xl">
         <div className="space-y-8">
           <div className="text-center">
@@ -815,9 +855,15 @@ export default function PeerMatchingPage() {
               <div className="overflow-x-auto pb-4">
                 <div className="flex gap-6 min-w-max px-4">
                 <AnimatePresence>
-                  {matches.slice(0, 8).map((peer) => (
+                  {matches.slice(0, 8).map((peer) => {
+                    console.log('[PEER CARD] Rendering peer:', {
+                      peerUserId: peer.peerUserId,
+                      displayName: peer.displayName,
+                      fullPeer: peer
+                    });
+                    return (
                     <motion.div
-                      key={peer.peerUserId}
+                      key={peer.peerUserId || peer.displayName}
                       layout
                       initial={{ opacity: 0, scale: 0.8, y: 50 }}
                       animate={
@@ -954,7 +1000,8 @@ export default function PeerMatchingPage() {
                         </CardContent>
                       </Card>
                     </motion.div>
-                  ))}
+                    );
+                  })}
                 </AnimatePresence>
               </div>
             </div>

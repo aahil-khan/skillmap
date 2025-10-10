@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
-import { Menu, User, Calendar, Mail, Target, Award, Clock, ArrowRight, Briefcase, BookOpen, Code, Settings, MapPin, CheckCircle2, Circle, Play, Star, ExternalLink, Users, ArrowLeft} from "lucide-react"
+import { Menu, User, Calendar, Mail, Target, Award, Clock, ArrowRight, Briefcase, BookOpen, Code, Settings, MapPin, CheckCircle2, Circle, Play, Star, ExternalLink, Users, ArrowLeft, MessageSquare} from "lucide-react"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -41,7 +41,7 @@ export default function DashboardLayout({
   const [isFetchingScore, setIsFetchingScore] = useState<boolean>(false)
 
   // Check if we're on a sub-page
-  const isOnSubPage = pathname === "/dashboard/learning-roadmap" || pathname === "/dashboard/peer-matching"
+  const isOnSubPage = pathname === "/dashboard/learning-roadmap" || pathname === "/dashboard/peer-matching" || pathname === "/dashboard/connections"
   const isDashboardPage = pathname === "/dashboard"
 
   useEffect(() => {
@@ -440,6 +440,15 @@ export default function DashboardLayout({
                   >
                     <Users className="h-4 w-4" />
                     <span>Peer Matching</span>
+                  </Link>
+                </Button>
+                <Button asChild variant="ghost" className="py-2 px-4 rounded-lg hover:bg-purple-50 transition-colors">
+                  <Link 
+                    href="/dashboard/connections"
+                    className="flex items-center space-x-2"
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                    <span>Connections</span>
                   </Link>
                 </Button>
               </div>

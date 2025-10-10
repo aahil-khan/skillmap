@@ -398,7 +398,7 @@ export interface CreatePeerProfileData {
 
 export interface SendConnectionData {
   receiverId: string;
-  connectionType: 'project' | 'dsa' | 'mentorship';
+  connectionType: 'project_partner' | 'study_partner' | 'mentorship' | 'general';
   message?: string;
 }
 
@@ -468,6 +468,7 @@ export async function getRecommendedMatches(
  * Send connection request to a peer
  */
 export async function sendConnectionRequest(data: SendConnectionData): Promise<PeerConnection> {
+  console.log('[API CLIENT] sendConnectionRequest called with:', data);
   return apiRequest<PeerConnection>('/peer/connect', {
     method: 'POST',
     body: JSON.stringify(data),
@@ -505,4 +506,119 @@ export async function respondToConnection(
     method: 'POST',
     body: JSON.stringify({ response }),
   });
+}
+
+// ============================================
+// NEW: CONNECTIONS & MESSAGING API
+// ============================================
+
+export interface PeerConnectionWithProfile {
+  id: string;
+  sender_userid: string;
+  receiver_userid: string;
+  connection_type: 'project_partner' | 'study_partner' | 'mentorship' | 'general';
+  status: 'pending' | 'accepted' | 'declined' | 'blocked';
+  sender_message?: string;
+  created_at: string;
+  responded_at?: string;
+  unread_count: number;
+  // Profile data
+  sender_profile?: {
+    display_name: string;
+    title: string;
+    bio: string;
+    experience_level: string;
+    availability: string;
+    looking_for: string[];
+  };
+  receiver_profile?: {
+    display_name: string;
+    title: string;
+    bio: string;
+    experience_level: string;
+    availability: string;
+    looking_for: string[];
+  };
+}
+
+export interface ConnectionsResponse {
+  sent: PeerConnectionWithProfile[];
+  received: PeerConnectionWithProfile[];
+  accepted: PeerConnectionWithProfile[];
+  pending_sent: PeerConnectionWithProfile[];
+  pending_received: PeerConnectionWithProfile[];
+}
+
+export interface Message {
+  id: string;
+  connection_id: string;
+  sender_userid: string;
+  receiver_userid: string;
+  message_text: string;
+  is_read: boolean;
+  read_at?: string;
+  created_at: string;
+  sender_profile?: {
+    display_name: string;
+  };
+}
+
+/**
+ * Get all connections for the current user
+ */
+export async function getConnections(status?: string): Promise<ConnectionsResponse> {
+  const queryString = status ? `?status=${status}` : '';
+  return apiRequest<ConnectionsResponse>(`/peer/connections${queryString}`);
+}
+
+/**
+ * Respond to a connection request (accept/decline)
+ */
+export async function respondToConnectionRequest(
+  connectionId: string,
+  action: 'accept' | 'decline'
+): Promise<{ success: boolean; data: PeerConnectionWithProfile; message: string }> {
+  return apiRequest<{ success: boolean; data: PeerConnectionWithProfile; message: string }>(
+    `/peer/connections/${connectionId}/respond`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ action }),
+    }
+  );
+}
+
+/**
+ * Get messages for a connection
+ */
+export async function getConnectionMessages(
+  connectionId: string,
+  limit?: number
+): Promise<{ connection_id: string; messages: Message[]; count: number }> {
+  const queryString = limit ? `?limit=${limit}` : '';
+  return apiRequest<{ connection_id: string; messages: Message[]; count: number }>(
+    `/peer/connections/${connectionId}/messages${queryString}`
+  );
+}
+
+/**
+ * Send a message in a connection
+ */
+export async function sendConnectionMessage(
+  connectionId: string,
+  message: string
+): Promise<{ success: boolean; data: Message; message: string }> {
+  return apiRequest<{ success: boolean; data: Message; message: string }>(
+    `/peer/connections/${connectionId}/messages`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    }
+  );
+}
+
+/**
+ * Get unread message count
+ */
+export async function getUnreadMessageCount(): Promise<{ unread_count: number }> {
+  return apiRequest<{ unread_count: number }>('/peer/connections/unread-count');
 }

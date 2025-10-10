@@ -14,6 +14,10 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
+    console.log('[PROXY /peer/connect] Received body:', JSON.stringify(body, null, 2));
+    console.log('[PROXY /peer/connect] Body keys:', Object.keys(body));
+    console.log('[PROXY /peer/connect] receiverId value:', body.receiverId);
+    console.log('[PROXY /peer/connect] connectionType value:', body.connectionType);
 
     const response = await fetch(`${API_URL}/peer/connect`, {
       method: 'POST',
@@ -24,7 +28,10 @@ export async function POST(request: Request) {
       body: JSON.stringify(body)
     });
 
+    console.log('[PROXY /peer/connect] Backend response status:', response.status);
+
     const data = await response.json();
+    console.log('[PROXY /peer/connect] Backend response data:', JSON.stringify(data, null, 2));
 
     if (!response.ok) {
       return NextResponse.json(
