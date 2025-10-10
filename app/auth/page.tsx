@@ -7,31 +7,37 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Mail, Lock, ArrowRight, User, LogIn, UserPlus } from "lucide-react"
-import Link from "next/link"
+import { Mail, Lock, ArrowRight, User, LogIn, UserPlus, Eye, EyeOff } from "lucide-react"
 import Navbar from "@/components/Navbar"
 import { PageErrorBoundary } from "@/components/GlobalErrorBoundary"
 
 function AuthPageContent() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [retypePassword, setRetypePassword] = useState("")
   const [fullname, setFullname] = useState("")
   const [isSignup, setIsSignup] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [isLoaded, setIsLoaded] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
 
   const handleAuth = useCallback(async (type: "login" | "signup") => {
     setLoading(true)
     setError("")
     
+    if (type === "signup" && password !== retypePassword) {
+      setError("Passwords do not match.")
+      setLoading(false)
+      return
+    }
+
     try {
       let result
       if (type === "login") {
         result = await supabase.auth.signInWithPassword({ email, password })
       } else {
-        // For signup, we need to create the user in auth and then in our custom table
         console.log("Starting signup process...")
         result = await supabase.auth.signUp({ 
           email, 
@@ -45,7 +51,6 @@ function AuthPageContent() {
         
         console.log("Auth signup result:", result)
         
-        // If signup successful and we have a user, insert into our custom users table
         if (result.data.user && !result.error) {
           console.log("Inserting user into custom table...")
           const { error: insertError } = await supabase
@@ -66,17 +71,25 @@ function AuthPageContent() {
             return
           }
           
-          // After successful signup, redirect to login
           if (!result.data.session) {
-            setError("Account created successfully! Please check your email to confirm your account, then sign in.")
-            // Switch to login mode after 2 seconds
+            // Clear form and instruct user to check email (including spam)
+            // Mark this email as just-signed-up so the subsequent first sign-in goes to /upload
+            try {
+              if (typeof window !== "undefined") {
+                localStorage.setItem("justSignedUpEmail", email)
+              }
+            } catch (e) {
+              console.warn("Could not set justSignedUpEmail:", e)
+            }
+            setError("Account created. Check your email (and spam) for the confirmation link. After confirming you'll be redirected to Upload.")
             setTimeout(() => {
               setIsSignup(false)
               setError("")
               setEmail("")
               setPassword("")
+              setRetypePassword("")
               setFullname("")
-            }, 3000)
+            }, 4000)
             setLoading(false)
             return
           }
@@ -86,10 +99,59 @@ function AuthPageContent() {
       if (result.error) {
         console.error("Auth error:", result.error)
         setError(result.error.message)
-      } else if (result.data.session) {
-        // Store JWT in localStorage
+      } else if (result && result.data && result.data.session) {
+        // store token
         localStorage.setItem("sb-jwt", result.data.session.access_token)
-        router.push("/upload")
+        
+        // fetch profile full_name from users table (prefer custom profile)
+        try {
+          const userId = result.data.user?.id
+          if (userId) {
+            const { data: profile } = await supabase.from('users').select('full_name').eq('id', userId).single()
+            const name = profile?.full_name ?? result.data.user?.user_metadata?.full_name ?? ""
+            if (name) localStorage.setItem("sb-user", name)
+          }
+        } catch (e) {
+          console.warn("Failed to fetch profile after auth:", e)
+        }
+
+        // Determine "first-time" more robustly:
+        // Treat as new if metadata.is_new is true OR if we have a justSignedUpEmail matching the current email.
+        // This avoids misrouting existing users whose metadata might be incorrect.
+        const userMetadata = result.data.user?.user_metadata as any
+        const metadataIsNew = userMetadata?.is_new === true || userMetadata?.is_new === "true"
+        let localIsNew = false
+        try {
+          if (typeof window !== "undefined") {
+            const marker = localStorage.getItem("justSignedUpEmail")
+            if (marker && marker === email) {
+              localIsNew = true
+            }
+          }
+        } catch (e) {
+          console.warn("Could not read justSignedUpEmail:", e)
+        }
+
+        const isNew = metadataIsNew || localIsNew
+
+        if (isNew) {
+          // clear the is_new flag server-side if possible and remove local marker
+          try {
+            await supabase.auth.updateUser({ data: { ...userMetadata, is_new: false } })
+          } catch (e) {
+            console.warn("Failed to update user metadata is_new flag:", e)
+          }
+          try {
+            if (typeof window !== "undefined") {
+              localStorage.removeItem("justSignedUpEmail")
+            }
+          } catch (e) {
+            console.warn("Could not remove justSignedUpEmail:", e)
+          }
+          router.push("/upload")
+        } else {
+          router.push("/dashboard")
+        }
       }
     } catch (err) {
       console.error("Unexpected error:", err)
@@ -97,22 +159,22 @@ function AuthPageContent() {
     }
     
     setLoading(false)
-  }, [email, password, fullname, router])
+  }, [email, password, retypePassword, fullname, router])
 
   useEffect(() => {
     setIsLoaded(true)
   }, [])
 
   useEffect(() => {
-    // Add event listener for Enter key
     const handleKeyPress = (event: KeyboardEvent) => {
       if (event.key === 'Enter') {
         event.preventDefault()
-        // Check if all required fields are filled
-        const isFormValid = email.trim() && password.trim() && (!isSignup || fullname.trim())
-        const isPasswordValid = !isSignup || password.length >= 6
+        const isSignupValid = isSignup && fullname.trim() && password.length >= 6 && password === retypePassword
+        const isLoginValid = !isSignup && password.trim()
         
-        if (isFormValid && isPasswordValid && !loading) {
+        const isFormValid = email.trim() && (isLoginValid || isSignupValid)
+        
+        if (isFormValid && !loading) {
           handleAuth(isSignup ? "signup" : "login")
         }
       }
@@ -120,11 +182,12 @@ function AuthPageContent() {
     
     document.addEventListener('keydown', handleKeyPress)
     
-    // Cleanup event listener
     return () => {
       document.removeEventListener('keydown', handleKeyPress)
     }
-  }, [email, password, fullname, isSignup, loading, handleAuth])
+  }, [email, password, retypePassword, fullname, isSignup, loading, handleAuth])
+
+  const passwordInputClass = `pl-10 pr-12 h-12 border-2 focus:border-${isSignup ? 'green' : 'blue'}-500 transition-colors`
 
   return (
     <div className="min-h-screen skillmap-bg">
@@ -178,18 +241,51 @@ function AuthPageContent() {
                   required
                 />
               </div>
+              
               <div className="relative">
                 <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                 <Input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="Enter your password (min 6 chars)"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  className={`pl-10 h-12 border-2 focus:border-${isSignup ? 'green' : 'blue'}-500 transition-colors`}
+                  className={passwordInputClass}
                   required
                   minLength={6}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 text-gray-500 hover:text-gray-700 transition-colors"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
               </div>
+
+              {isSignup && (
+                <div className="relative animate-fadeIn">
+                  <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Retype your password"
+                    value={retypePassword}
+                    onChange={e => setRetypePassword(e.target.value)}
+                    className={passwordInputClass}
+                    required
+                    minLength={6}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 text-gray-500 hover:text-gray-700 transition-colors"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
+              )}
+              
               {error && (
                 <div className={`border px-4 py-3 rounded-lg text-sm animate-fadeIn ${
                   error.includes("successfully") || error.includes("created successfully")
@@ -204,7 +300,7 @@ function AuthPageContent() {
             <div className="space-y-3">
               <Button
                 onClick={() => handleAuth(isSignup ? "signup" : "login")}
-                disabled={loading || (isSignup && (!fullname.trim() || password.length < 6)) || (!email.trim() || !password.trim())}
+                disabled={loading || (isSignup && (!fullname.trim() || password.length < 6 || password !== retypePassword)) || (!email.trim() || !password.trim())}
                 className={`w-full h-12 text-lg font-semibold hover-lift ${
                   isSignup 
                     ? "bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white" 
@@ -212,51 +308,29 @@ function AuthPageContent() {
                 }`}
               >
                 {loading ? (
-                  <span className="flex items-center">
-                    <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                    {isSignup ? "Creating Account" : "Signing In"}<span className="loading-dots"></span>
+                  <span className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white mr-3"></div>
+                    Processing...
                   </span>
                 ) : (
-                  <>
+                  <span className="flex items-center justify-center">
                     {isSignup ? "Create Account" : "Sign In"}
                     <ArrowRight className="ml-2 h-5 w-5" />
-                  </>
+                  </span>
                 )}
               </Button>
-              
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-gray-300" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">
-                    {isSignup ? "Already have an account?" : "Don't have an account?"}
-                  </span>
-                </div>
-              </div>
-
-              <Button
-                onClick={() => {
-                  setIsSignup(!isSignup)
-                  setError("")
-                  setFullname("")
-                }}
-                disabled={loading}
-                variant="outline"
-                className={`w-full h-12 text-lg font-semibold border-2 transition-all duration-300 ${
-                  isSignup 
-                    ? "hover:bg-blue-50 hover:border-blue-300" 
-                    : "hover:bg-green-50 hover:border-green-300"
-                }`}
-              >
-                {isSignup ? "Sign In Instead" : "Create Account"}
-              </Button>
-            </div>
-
-            <div className="text-center">
-              <Link href="/" className="text-blue-600 hover:text-blue-800 text-sm font-medium hover:underline transition-colors">
-                ← Back to Home
-              </Link>
+              <p className="text-center text-sm text-gray-600">
+                {isSignup ? "Already have an account?" : "Don't have an account?"}
+                <button
+                  onClick={() => {
+                    setIsSignup(!isSignup)
+                    setError("")
+                  }}
+                  className="font-semibold text-blue-600 hover:underline ml-1"
+                >
+                  {isSignup ? "Sign In" : "Sign Up"}
+                </button>
+              </p>
             </div>
           </CardContent>
         </Card>
