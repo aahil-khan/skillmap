@@ -73,8 +73,8 @@ function ResultsPageContent() {
         return
       }
 
-      // Use new API client to fetch skill gap analysis
-      const data: AnalysisResult = await api.get(getBackendUrl(BACKEND_ENDPOINTS.ANALYZE_SKILL_GAPS))
+      // Use new API client to fetch skill gap analysis (POST request with no body)
+      const data: AnalysisResult = await api.post(getBackendUrl(BACKEND_ENDPOINTS.ANALYZE_SKILL_GAPS), {})
       
       setAnalysis(data)
       

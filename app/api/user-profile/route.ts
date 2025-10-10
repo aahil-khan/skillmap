@@ -32,6 +32,14 @@ export async function POST(request: NextRequest) {
     // Get the request body
     const body = await request.json()
     
+    // Log what we're sending to backend for debugging
+    console.log('Sending to backend /user-profile:', {
+      hasName: !!body.name,
+      hasTechnicalSkills: !!body.technical_skills,
+      technicalSkillsCount: body.technical_skills?.length,
+      hasGoal: !!body.goal,
+    })
+    
     // Forward the request to the backend
     const backendResponse = await fetch('http://localhost:5005/user-profile', {
       method: 'POST',
@@ -44,18 +52,30 @@ export async function POST(request: NextRequest) {
     
     if (!backendResponse.ok) {
       const errorText = await backendResponse.text()
-      console.error('Backend error:', errorText)
+      console.error('Backend /user-profile error:', {
+        status: backendResponse.status,
+        statusText: backendResponse.statusText,
+        error: errorText
+      })
       
       // Try to parse as JSON, otherwise return text
       let errorData
       try {
         errorData = JSON.parse(errorText)
+        // Log validation details if present
+        if (errorData.error?.details) {
+          console.error('Validation details:', errorData.error.details)
+        }
       } catch {
         errorData = { error: errorText }
       }
       
       return NextResponse.json(
-        { success: false, error: errorData.error || errorData.message || 'Backend error' },
+        { 
+          success: false, 
+          error: errorData.error || errorData.message || 'Backend error',
+          ...(errorData.error?.details && { details: errorData.error.details })
+        },
         { status: backendResponse.status }
       )
     }
@@ -64,7 +84,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(data)
     
   } catch (error) {
-    console.error('API Route Error:', error)
+    console.error('API Route Error in /user-profile:', error)
     return NextResponse.json(
       { success: false, error: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }
