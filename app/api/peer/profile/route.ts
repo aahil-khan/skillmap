@@ -3,8 +3,12 @@ import { NextResponse } from 'next/server';
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5005';
 
 export async function GET(request: Request) {
+  console.log('[API /peer/profile] GET request received');
+  
   try {
     const authHeader = request.headers.get('authorization');
+    
+    console.log('[API /peer/profile] Auth header:', authHeader ? 'Present' : 'Missing');
     
     if (!authHeader) {
       return NextResponse.json(

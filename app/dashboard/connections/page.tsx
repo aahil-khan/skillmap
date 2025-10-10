@@ -46,6 +46,18 @@ export default function ConnectionsPage() {
     setLoading(true)
     try {
       const data = await getConnections()
+      console.log('[Connections Frontend] Loaded connections:', {
+        acceptedCount: data.accepted?.length,
+        firstAccepted: data.accepted?.[0] ? {
+          id: data.accepted[0].id,
+          sender_userid: data.accepted[0].sender_userid,
+          receiver_userid: data.accepted[0].receiver_userid,
+          has_sender_profile: !!data.accepted[0].sender_profile,
+          has_receiver_profile: !!data.accepted[0].receiver_profile,
+          sender_profile: data.accepted[0].sender_profile,
+          receiver_profile: data.accepted[0].receiver_profile
+        } : null
+      })
       setConnections(data)
     } catch (error: any) {
       console.error("Failed to load connections:", error)
@@ -138,6 +150,15 @@ export default function ConnectionsPage() {
   const getOtherProfile = (connection: PeerConnectionWithProfile) => {
     // Determine which profile to show based on who we are
     const userId = localStorage.getItem('user-id') // You should get this from auth context
+    console.log('[Connections] getOtherProfile called:', {
+      userId,
+      connection_sender: connection.sender_userid,
+      connection_receiver: connection.receiver_userid,
+      has_sender_profile: !!connection.sender_profile,
+      has_receiver_profile: !!connection.receiver_profile,
+      will_return: connection.sender_userid === userId ? 'receiver_profile' : 'sender_profile'
+    })
+    
     if (connection.sender_userid === userId) {
       return connection.receiver_profile
     }

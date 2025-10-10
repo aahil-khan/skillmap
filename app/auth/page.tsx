@@ -150,7 +150,8 @@ function AuthPageContent() {
           }
           router.push("/upload")
         } else {
-          router.push("/dashboard")
+          //TODO  fix later
+          router.push("/upload")
         }
       }
     } catch (err) {

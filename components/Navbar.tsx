@@ -66,13 +66,22 @@ export default function Navbar({ showExploreMenu, setShowExploreMenu }: NavbarPr
   }, []);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
+    try {
+      // Attempt Supabase signOut only in development to avoid production 403 errors
+      if (process.env.NODE_ENV === 'development') {
+        await supabase.auth.signOut()
+      } else {
+        // In production, just do local cleanup (avoids 403 errors)
+        console.log('Production logout: clearing local session only')
+      }
+    } catch (error) {
+      console.warn('Supabase signOut failed, continuing with local cleanup:', error)
+    }
     
-    // Clear all non-auth localStorage data
+    // Clear all localStorage data (auth + app data)
     clearLocalStorageData()
-    
-    // Keep auth token removal separate
     localStorage.removeItem('sb-jwt')
+    localStorage.removeItem('user-id')
     
     setIsAuthenticated(false)
     setUserDetails(null)
