@@ -28,20 +28,27 @@ import {
   Github,
   Linkedin,
   Globe,
+  Loader2,
 } from "lucide-react"
+import {
+  getPeerProfile,
+  upsertPeerProfile,
+  getRecommendedMatches,
+  sendConnectionRequest,
+  skipPeer,
+  type PeerMatch,
+  type CreatePeerProfileData,
+} from "@/lib/api"
+import { useToast } from "@/hooks/use-toast"
 
 // Types
 interface ProfileData {
-  name: string
+  display_name: string
   title: string
   bio: string
-  location: string
-  experience: string
-  availability: string
-  lookingFor: string[]
-  github?: string
-  linkedin?: string
-  portfolio?: string
+  experience_level: 'Entry Level' | '1-3 years' | '3-5 years' | '5+ years' | 'Student'
+  availability: 'Full-time' | 'Part-time' | 'Weekends only' | 'Evenings' | 'Flexible'
+  looking_for: ('project' | 'dsa' | 'mentorship')[]
 }
 
 interface ResumePeer {
@@ -141,40 +148,64 @@ function ModeToggle({
 }
 
 // Profile Setup Component
-function ProfileSetupPage({ onComplete, onCancel }: { onComplete: (data: ProfileData) => void; onCancel: () => void }) {
-  const [formData, setFormData] = useState<ProfileData>({
-    name: "",
-    title: "",
-    bio: "",
-    location: "",
-    experience: "",
-    availability: "",
-    lookingFor: [],
-    github: "",
-    linkedin: "",
-    portfolio: "",
-  })
+function ProfileSetupPage({ 
+  onComplete, 
+  onCancel,
+  existingData 
+}: { 
+  onComplete: (data: ProfileData) => void
+  onCancel: () => void
+  existingData?: ProfileData | null
+}) {
+  const { toast } = useToast()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [formData, setFormData] = useState<ProfileData>(
+    existingData || {
+      display_name: "",
+      title: "",
+      bio: "",
+      experience_level: "1-3 years",
+      availability: "Flexible",
+      looking_for: [],
+    }
+  )
 
-  const lookingForOptions = [
-    "Project Collaborators",
-    "Study Partners",
-    "Mentorship",
-    "Code Reviews",
-    "Career Advice",
-    "Networking",
-    "Mock Interviews",
+  const lookingForOptions: Array<{ value: 'project' | 'dsa' | 'mentorship'; label: string }> = [
+    { value: "project", label: "Project Collaborators" },
+    { value: "dsa", label: "Study Partners (DSA)" },
+    { value: "mentorship", label: "Mentorship" },
   ]
 
-  const handleLookingForChange = (option: string, checked: boolean) => {
+  const handleLookingForChange = (option: 'project' | 'dsa' | 'mentorship', checked: boolean) => {
     setFormData((prev) => ({
       ...prev,
-      lookingFor: checked ? [...prev.lookingFor, option] : prev.lookingFor.filter((item) => item !== option),
+      looking_for: checked ? [...prev.looking_for, option] : prev.looking_for.filter((item) => item !== option),
     }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    onComplete(formData)
+    setIsSubmitting(true)
+    
+    try {
+      await upsertPeerProfile(formData)
+      toast({
+        title: existingData ? "Profile updated!" : "Profile created!",
+        description: existingData 
+          ? "Your peer matching profile has been updated."
+          : "Your peer matching profile is now active.",
+      })
+      onComplete(formData)
+    } catch (error: any) {
+      console.error("Failed to save profile:", error)
+      toast({
+        title: existingData ? "Failed to update profile" : "Failed to create profile",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -186,35 +217,41 @@ function ProfileSetupPage({ onComplete, onCancel }: { onComplete: (data: Profile
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
-            <h2 className="text-2xl font-bold text-gray-900">Setup Your Profile</h2>
+            <h2 className="text-2xl font-bold text-gray-900">
+              {existingData ? "Edit Your Profile" : "Setup Your Profile"}
+            </h2>
             <div className="w-16"></div>
           </div>
-          <p className="text-gray-600">Tell us about yourself to find the perfect coding partners</p>
+          <p className="text-gray-600">
+            {existingData 
+              ? "Update your profile to refine your matches"
+              : "Tell us about yourself to find the perfect coding partners"}
+          </p>
         </CardHeader>
         <CardContent className="p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="name">Full Name *</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-                  required
-                  className="border-cream-300 focus:border-[#8b1538]"
-                />
-              </div>
-              <div>
-                <Label htmlFor="title">Professional Title *</Label>
-                <Input
-                  id="title"
-                  value={formData.title}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
-                  placeholder="e.g., Full Stack Developer"
-                  required
-                  className="border-cream-300 focus:border-[#8b1538]"
-                />
-              </div>
+            <div>
+              <Label htmlFor="display_name">Display Name *</Label>
+              <Input
+                id="display_name"
+                value={formData.display_name}
+                onChange={(e) => setFormData((prev) => ({ ...prev, display_name: e.target.value }))}
+                required
+                className="border-cream-300 focus:border-[#8b1538]"
+                placeholder="How should we call you?"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="title">Professional Title *</Label>
+              <Input
+                id="title"
+                value={formData.title}
+                onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+                placeholder="e.g., Full Stack Developer"
+                required
+                className="border-cream-300 focus:border-[#8b1538]"
+              />
             </div>
 
             <div>
@@ -231,20 +268,12 @@ function ProfileSetupPage({ onComplete, onCancel }: { onComplete: (data: Profile
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="location">Location</Label>
-                <Input
-                  id="location"
-                  value={formData.location}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, location: e.target.value }))}
-                  placeholder="e.g., San Francisco, CA"
-                  className="border-cream-300 focus:border-[#8b1538]"
-                />
-              </div>
-              <div>
-                <Label htmlFor="experience">Experience Level *</Label>
+                <Label htmlFor="experience_level">Experience Level *</Label>
                 <Select
-                  value={formData.experience}
-                  onValueChange={(value) => setFormData((prev) => ({ ...prev, experience: value }))}
+                  value={formData.experience_level}
+                  onValueChange={(value: 'Entry Level' | '1-3 years' | '3-5 years' | '5+ years' | 'Student') => 
+                    setFormData((prev) => ({ ...prev, experience_level: value }))
+                  }
                 >
                   <SelectTrigger className="border-cream-300 focus:border-[#8b1538]">
                     <SelectValue placeholder="Select experience level" />
@@ -258,95 +287,77 @@ function ProfileSetupPage({ onComplete, onCancel }: { onComplete: (data: Profile
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-
-            <div>
-              <Label htmlFor="availability">Availability *</Label>
-              <Select
-                value={formData.availability}
-                onValueChange={(value) => setFormData((prev) => ({ ...prev, availability: value }))}
-              >
-                <SelectTrigger className="border-cream-300 focus:border-[#8b1538]">
-                  <SelectValue placeholder="Select availability" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Full-time">Full-time</SelectItem>
-                  <SelectItem value="Part-time">Part-time</SelectItem>
-                  <SelectItem value="Weekends only">Weekends only</SelectItem>
-                  <SelectItem value="Evenings">Evenings</SelectItem>
-                  <SelectItem value="Flexible">Flexible</SelectItem>
-                </SelectContent>
-              </Select>
+              <div>
+                <Label htmlFor="availability">Availability *</Label>
+                <Select
+                  value={formData.availability}
+                  onValueChange={(value: 'Full-time' | 'Part-time' | 'Weekends only' | 'Evenings' | 'Flexible') => 
+                    setFormData((prev) => ({ ...prev, availability: value }))
+                  }
+                >
+                  <SelectTrigger className="border-cream-300 focus:border-[#8b1538]">
+                    <SelectValue placeholder="Select availability" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Full-time">Full-time</SelectItem>
+                    <SelectItem value="Part-time">Part-time</SelectItem>
+                    <SelectItem value="Weekends only">Weekends only</SelectItem>
+                    <SelectItem value="Evenings">Evenings</SelectItem>
+                    <SelectItem value="Flexible">Flexible</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div>
               <Label>What are you looking for? *</Label>
-              <div className="grid grid-cols-2 gap-3 mt-2">
+              <div className="grid grid-cols-1 gap-3 mt-2">
                 {lookingForOptions.map((option) => (
-                  <div key={option} className="flex items-center space-x-2">
+                  <div key={option.value} className="flex items-center space-x-2">
                     <Checkbox
-                      id={option}
-                      checked={formData.lookingFor.includes(option)}
-                      onCheckedChange={(checked) => handleLookingForChange(option, checked as boolean)}
+                      id={option.value}
+                      checked={formData.looking_for.includes(option.value)}
+                      onCheckedChange={(checked) => handleLookingForChange(option.value, checked as boolean)}
                     />
-                    <Label htmlFor={option} className="text-sm">
-                      {option}
+                    <Label htmlFor={option.value} className="text-sm">
+                      {option.label}
                     </Label>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="space-y-4">
-              <Label>Social Links (Optional)</Label>
-              <div className="grid grid-cols-1 gap-3">
-                <div className="flex items-center gap-2">
-                  <Github className="h-4 w-4 text-gray-500" />
-                  <Input
-                    value={formData.github}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, github: e.target.value }))}
-                    placeholder="GitHub profile URL"
-                    className="border-cream-300 focus:border-[#8b1538]"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <Linkedin className="h-4 w-4 text-gray-500" />
-                  <Input
-                    value={formData.linkedin}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, linkedin: e.target.value }))}
-                    placeholder="LinkedIn profile URL"
-                    className="border-cream-300 focus:border-[#8b1538]"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <Globe className="h-4 w-4 text-gray-500" />
-                  <Input
-                    value={formData.portfolio}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, portfolio: e.target.value }))}
-                    placeholder="Portfolio website URL"
-                    className="border-cream-300 focus:border-[#8b1538]"
-                  />
-                </div>
-              </div>
-            </div>
-
             <div className="flex gap-4 pt-4">
-              <Button type="button" variant="outline" onClick={onCancel} className="flex-1 bg-transparent">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={onCancel} 
+                className="flex-1 bg-transparent"
+                disabled={isSubmitting}
+              >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 className="flex-1 bg-[#8b1538] hover:bg-[#7a1230] text-white"
                 disabled={
-                  !formData.name ||
+                  isSubmitting ||
+                  !formData.display_name ||
                   !formData.title ||
                   !formData.bio ||
-                  !formData.experience ||
+                  !formData.experience_level ||
                   !formData.availability ||
-                  formData.lookingFor.length === 0
+                  formData.looking_for.length === 0
                 }
               >
-                Create Profile
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    {existingData ? "Updating..." : "Creating..."}
+                  </>
+                ) : (
+                  existingData ? "Update Profile" : "Create Profile"
+                )}
               </Button>
             </div>
           </form>
@@ -357,38 +368,70 @@ function ProfileSetupPage({ onComplete, onCancel }: { onComplete: (data: Profile
 }
 
 export default function PeerMatchingPage() {
+  const { toast } = useToast()
   const [mode, setMode] = useState<"resume" | "dsa">("resume")
   const [showProfileSetup, setShowProfileSetup] = useState(false)
   const [showProfileView, setShowProfileView] = useState(false)
   const [isPublicProfile, setIsPublicProfile] = useState(false)
   const [profileData, setProfileData] = useState<ProfileData | null>(null)
-  const [resumePeers, setResumePeers] = useState<ResumePeer[]>([])
-  const [dsaPeers, setDSAPeers] = useState<DSAPeer[]>([])
-  const [loadingResume, setLoadingResume] = useState(false)
-  const [loadingDSA, setLoadingDSA] = useState(false)
-  const [hasResumeData, setHasResumeData] = useState(false)
+  const [matches, setMatches] = useState<PeerMatch[]>([])
+  const [loadingMatches, setLoadingMatches] = useState(false)
+  const [loadingProfile, setLoadingProfile] = useState(true)
   const [hasLeetCodeData, setHasLeetCodeData] = useState(false)
   const [animatingCards, setAnimatingCards] = useState<Set<string>>(new Set())
   const [posts, setPosts] = useState<Post[]>([])
 
+  // Load profile on mount
   useEffect(() => {
-    const peerPermission = localStorage.getItem("peer-permission-granted")
-    const savedProfile = localStorage.getItem("peer-profile-data")
+    loadPeerProfile()
+  }, [])
 
-    setIsPublicProfile(!!peerPermission)
-    if (savedProfile) {
-      setProfileData(JSON.parse(savedProfile))
+  const loadPeerProfile = async () => {
+    setLoadingProfile(true)
+    try {
+      const profile = await getPeerProfile()
+      if (profile) {
+        setIsPublicProfile(true)
+        setProfileData({
+          display_name: profile.display_name,
+          title: profile.title,
+          bio: profile.bio,
+          experience_level: profile.experience_level,
+          availability: profile.availability,
+          looking_for: profile.looking_for,
+        })
+        // Load matches if profile exists
+        loadMatches()
+      }
+    } catch (error) {
+      console.error("Failed to load profile:", error)
+    } finally {
+      setLoadingProfile(false)
     }
+  }
 
-    const skillsData = localStorage.getItem("user-skills") || localStorage.getItem("extracted-skills")
-    setHasResumeData(!!skillsData)
+  const loadMatches = async (matchType: 'project' | 'dsa' | 'both' = 'both') => {
+    setLoadingMatches(true)
+    try {
+      const fetchedMatches = await getRecommendedMatches(matchType, 20)
+      setMatches(Array.isArray(fetchedMatches) ? fetchedMatches : [])
+    } catch (error: any) {
+      console.error("Failed to load matches:", error)
+      setMatches([]) // Set empty array on error
+      toast({
+        title: "Failed to load matches",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoadingMatches(false)
+    }
+  }
 
+  useEffect(() => {
+    // Check if user has LeetCode data
     const leetcodeData = localStorage.getItem("leetcode-connected")
     setHasLeetCodeData(!!leetcodeData)
-
-    if (peerPermission && savedProfile) {
-      loadResumePeers()
-    }
 
     // Load mock posts
     const mockPosts: Post[] = [
@@ -432,95 +475,6 @@ export default function PeerMatchingPage() {
     setPosts(mockPosts)
   }, [])
 
-  const loadResumePeers = async () => {
-    setLoadingResume(true)
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
-      const mockPeers: ResumePeer[] = [
-        {
-          id: "1",
-          name: "Koala Bear",
-          title: "Full Stack Developer",
-          company: "Tech Corp",
-          location: "San Francisco, CA",
-          avatar: "/placeholder.svg?height=80&width=80&text=KB",
-          bio: "Passionate full-stack developer with 3 years of experience building scalable web applications. Love working with React and Node.js, always eager to learn new technologies and collaborate on exciting projects.",
-          sharedSkills: ["React", "Node.js", "TypeScript"],
-          complementarySkills: ["Python", "AWS", "Docker", "GraphQL"],
-          domains: ["Web Development", "Cloud Computing"],
-          matchScore: 92,
-          isOnline: true,
-          github: "https://github.com/koalabear",
-          linkedin: "https://linkedin.com/in/koalabear",
-          experience: "3-5 years",
-          availability: "Part-time",
-          lookingFor: ["Project Collaborators", "Code Reviews"],
-        },
-        {
-          id: "2",
-          name: "Butterfly Shark",
-          title: "Frontend Developer",
-          company: "StartupXYZ",
-          location: "Remote",
-          avatar: "/placeholder.svg?height=80&width=80&text=BS",
-          bio: "Creative frontend developer specializing in React and modern CSS. I enjoy creating beautiful, accessible user interfaces and have a keen eye for design details.",
-          sharedSkills: ["JavaScript", "React", "CSS"],
-          complementarySkills: ["Vue.js", "GraphQL", "Figma"],
-          domains: ["Web Development", "UI/UX"],
-          matchScore: 85,
-          isOnline: false,
-          linkedin: "https://linkedin.com/in/butterflyshark",
-          portfolio: "https://butterflyshark.dev",
-          experience: "1-3 years",
-          availability: "Flexible",
-          lookingFor: ["Project Collaborators", "Mentorship"],
-        },
-      ]
-
-      setResumePeers(mockPeers)
-    } catch (error) {
-      console.error("Failed to load resume peers:", error)
-    } finally {
-      setLoadingResume(false)
-    }
-  }
-
-  const loadDSAPeers = async () => {
-    setLoadingDSA(true)
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 1200))
-
-      const mockPeers: DSAPeer[] = [
-        {
-          id: "1",
-          name: "Tiger Rabbit",
-          location: "Seattle, WA",
-          avatar: "/placeholder.svg?height=80&width=80&text=TR",
-          bio: "Computer Science student passionate about algorithms and competitive programming. Currently preparing for technical interviews and love solving challenging problems.",
-          strengths: ["Arrays", "Graphs", "Dynamic Programming"],
-          weakAreas: ["Trees", "Greedy Algorithms"],
-          easySolved: 145,
-          mediumSolved: 98,
-          hardSolved: 32,
-          totalSolved: 275,
-          matchScore: 94,
-          isOnline: true,
-          github: "https://github.com/tigerrabbit",
-          experience: "Student",
-          availability: "Flexible",
-          lookingFor: ["Study Partners", "Mock Interviews"],
-        },
-      ]
-
-      setDSAPeers(mockPeers)
-    } catch (error) {
-      console.error("Failed to load DSA peers:", error)
-    } finally {
-      setLoadingDSA(false)
-    }
-  }
-
   const handleModeChange = (newMode: "resume" | "dsa") => {
     if (!isPublicProfile) {
       setShowProfileSetup(true)
@@ -528,37 +482,35 @@ export default function PeerMatchingPage() {
     }
 
     setMode(newMode)
-
-    if (newMode === "resume" && resumePeers.length === 0) {
-      loadResumePeers()
-    } else if (newMode === "dsa" && dsaPeers.length === 0) {
-      loadDSAPeers()
-    }
+    
+    // Reload matches with new filter
+    const matchType = newMode === "resume" ? "project" : "dsa"
+    loadMatches(matchType)
   }
 
   const handleProfileSetupComplete = (data: ProfileData) => {
     setProfileData(data)
     setIsPublicProfile(true)
     setShowProfileSetup(false)
-
-    localStorage.setItem("peer-permission-granted", "true")
-    localStorage.setItem("peer-profile-data", JSON.stringify(data))
-
-    loadResumePeers()
-    if (hasLeetCodeData) {
-      loadDSAPeers()
-    }
+    // Load matches after profile setup
+    loadMatches()
   }
 
-  const handleSkip = (peerId: string) => {
+  const handleSkip = async (peerId: string) => {
     setAnimatingCards((prev) => new Set(prev).add(`${peerId}-skip`))
 
+    // Find match score for this peer
+    const peer = matches.find(m => m.peerUserId === peerId)
+    const matchScore = peer?.overallScore || 0
+
+    try {
+      await skipPeer(peerId, matchScore)
+    } catch (error) {
+      console.error("Failed to track skip:", error)
+    }
+
     setTimeout(() => {
-      if (mode === "resume") {
-        setResumePeers((prev) => prev.filter((peer) => peer.id !== peerId))
-      } else {
-        setDSAPeers((prev) => prev.filter((peer) => peer.id !== peerId))
-      }
+      setMatches((prev) => prev.filter((match) => match.peerUserId !== peerId))
       setAnimatingCards((prev) => {
         const newSet = new Set(prev)
         newSet.delete(`${peerId}-skip`)
@@ -567,15 +519,33 @@ export default function PeerMatchingPage() {
     }, 600)
   }
 
-  const handleConnect = (peerId: string) => {
+  const handleConnect = async (peerId: string) => {
     setAnimatingCards((prev) => new Set(prev).add(`${peerId}-connect`))
 
+    // Determine connection type based on mode
+    const connectionType = mode === "resume" ? "project" : "dsa"
+
+    try {
+      await sendConnectionRequest({
+        receiverId: peerId,
+        connectionType,
+      })
+      
+      toast({
+        title: "Connection request sent!",
+        description: "You'll be notified when they respond.",
+      })
+    } catch (error: any) {
+      console.error("Failed to send connection:", error)
+      toast({
+        title: "Failed to send request",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      })
+    }
+
     setTimeout(() => {
-      if (mode === "resume") {
-        setResumePeers((prev) => prev.filter((peer) => peer.id !== peerId))
-      } else {
-        setDSAPeers((prev) => prev.filter((peer) => peer.id !== peerId))
-      }
+      setMatches((prev) => prev.filter((match) => match.peerUserId !== peerId))
       setAnimatingCards((prev) => {
         const newSet = new Set(prev)
         newSet.delete(`${peerId}-connect`)
@@ -585,7 +555,13 @@ export default function PeerMatchingPage() {
   }
 
   if (showProfileSetup) {
-    return <ProfileSetupPage onComplete={handleProfileSetupComplete} onCancel={() => setShowProfileSetup(false)} />
+    return (
+      <ProfileSetupPage 
+        onComplete={handleProfileSetupComplete} 
+        onCancel={() => setShowProfileSetup(false)}
+        existingData={profileData}
+      />
+    )
   }
 
   if (showProfileView && profileData) {
@@ -596,9 +572,8 @@ export default function PeerMatchingPage() {
             <div className="w-16 h-16 bg-[#8b1538] rounded-full flex items-center justify-center mx-auto mb-4">
               <User className="h-8 w-8 text-white" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900">{profileData.name}</h2>
+            <h2 className="text-2xl font-bold text-gray-900">{profileData.display_name}</h2>
             <p className="text-[#8b1538] font-medium">{profileData.title}</p>
-            {profileData.location && <p className="text-gray-600">{profileData.location}</p>}
           </CardHeader>
           <CardContent className="p-6 space-y-4">
             <div>
@@ -608,18 +583,18 @@ export default function PeerMatchingPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <h4 className="font-medium text-gray-900">Experience</h4>
-                <p className="text-gray-600">{profileData.experience}</p>
+                <p className="text-gray-600 capitalize">{profileData.experience_level}</p>
               </div>
               <div>
                 <h4 className="font-medium text-gray-900">Availability</h4>
-                <p className="text-gray-600">{profileData.availability}</p>
+                <p className="text-gray-600 capitalize">{profileData.availability}</p>
               </div>
             </div>
             <div>
               <h4 className="font-medium text-gray-900 mb-2">Looking For</h4>
               <div className="flex flex-wrap gap-2">
-                {profileData.lookingFor.map((item) => (
-                  <Badge key={item} className="bg-[#8b1538]/10 text-[#8b1538] border-[#8b1538]/20">
+                {profileData.looking_for.map((item) => (
+                  <Badge key={item} className="bg-[#8b1538]/10 text-[#8b1538] border-[#8b1538]/20 capitalize">
                     {item}
                   </Badge>
                 ))}
@@ -638,6 +613,15 @@ export default function PeerMatchingPage() {
   }
 
   const renderEmptyState = () => {
+    if (loadingProfile) {
+      return (
+        <div className="text-center py-16">
+          <Loader2 className="h-12 w-12 animate-spin text-[#8b1538] mx-auto mb-4" />
+          <p className="text-gray-600">Loading your profile...</p>
+        </div>
+      )
+    }
+
     if (!isPublicProfile) {
       return (
         <div className="text-center py-16">
@@ -655,34 +639,6 @@ export default function PeerMatchingPage() {
             <Settings className="h-4 w-4 mr-2" />
             Setup Profile
           </Button>
-        </div>
-      )
-    }
-
-    if (mode === "resume" && !hasResumeData) {
-      return (
-        <div className="text-center py-16">
-          <div className="w-20 h-20 bg-[#8b1538] rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-            <Upload className="h-10 w-10 text-white" />
-          </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-3">Upload Your Resume First</h3>
-          <p className="text-gray-600 mb-6 max-w-md mx-auto">
-            To find project partners with complementary skills, we need to analyze your resume and extract your skills.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Button asChild className="bg-[#8b1538] hover:bg-[#7a1230] text-white border-0">
-              <Link href="/upload">
-                <Upload className="h-4 w-4 mr-2" />
-                Upload Resume
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="bg-transparent border-cream-300">
-              <Link href="/onboarding">
-                <FileText className="h-4 w-4 mr-2" />
-                Manual Entry
-              </Link>
-            </Button>
-          </div>
         </div>
       )
     }
@@ -713,13 +669,28 @@ export default function PeerMatchingPage() {
       )
     }
 
+    if (loadingMatches) {
+      return (
+        <div className="text-center py-16">
+          <Loader2 className="h-12 w-12 animate-spin text-[#8b1538] mx-auto mb-4" />
+          <p className="text-gray-600">Finding your perfect matches...</p>
+        </div>
+      )
+    }
+
+    if (matches.length === 0) {
+      return (
+        <div className="text-center py-16">
+          <h3 className="text-xl font-bold text-gray-900 mb-3">No matches found</h3>
+          <p className="text-gray-600 mb-6">Check back later for new potential connections!</p>
+        </div>
+      )
+    }
+
     return null
   }
 
-  const currentPeers = mode === "resume" ? resumePeers : dsaPeers
-  const isLoading = mode === "resume" ? loadingResume : loadingDSA
-
-  if (!isPublicProfile || !currentPeers.length || isLoading) {
+  if (!isPublicProfile || loadingProfile) {
     return (
       <div className="min-h-screen skillmap-bg p-4">
         <div className="container mx-auto max-w-6xl">
@@ -747,21 +718,112 @@ export default function PeerMatchingPage() {
             <p className="text-gray-600">Connect with developers who complement your skills and learning goals</p>
           </div>
 
+          {/* Profile Summary Card */}
+          {profileData && (
+            <Card className="border-2 border-cream-300 bg-cream-50 shadow-lg">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-4 flex-1">
+                    <div className="w-12 h-12 bg-[#8b1538] rounded-full flex items-center justify-center flex-shrink-0">
+                      <User className="h-6 w-6 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-bold text-gray-900">{profileData.display_name}</h3>
+                      <p className="text-[#8b1538] font-medium text-sm mb-2">{profileData.title}</p>
+                      <p className="text-gray-700 text-sm line-clamp-2 mb-3">{profileData.bio}</p>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant="outline" className="text-xs">
+                          {profileData.experience_level}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {profileData.availability}
+                        </Badge>
+                        {profileData.looking_for.map((item) => (
+                          <Badge key={item} className="bg-[#8b1538]/10 text-[#8b1538] border-[#8b1538]/20 capitalize text-xs">
+                            {item}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => setShowProfileSetup(true)}
+                    variant="outline"
+                    size="sm"
+                    className="flex-shrink-0"
+                  >
+                    <Settings className="h-4 w-4 mr-2" />
+                    Edit Profile
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <ModeToggle mode={mode} onModeChange={handleModeChange} />
 
-          <div className="w-full">
-            <div className="overflow-x-auto pb-4">
-              <div className="flex gap-6 min-w-max px-4">
+          {/* Empty states and loading */}
+          {loadingMatches ? (
+            <div className="text-center py-16">
+              <Loader2 className="h-12 w-12 animate-spin text-[#8b1538] mx-auto mb-4" />
+              <p className="text-gray-600">Finding your perfect matches...</p>
+            </div>
+          ) : mode === "dsa" && !hasLeetCodeData ? (
+            <div className="text-center py-16">
+              <Card className="max-w-md mx-auto border-2 border-cream-300 bg-cream-50">
+                <CardContent className="p-8">
+                  <div className="w-20 h-20 bg-[#2f5f5f] rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+                    <Code className="h-10 w-10 text-white" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-3">Connect Your LeetCode</h3>
+                  <p className="text-gray-600 mb-6">
+                    To find algorithm study partners with complementary strengths, connect your LeetCode profile for analysis.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                    <Button asChild className="bg-[#2f5f5f] hover:bg-[#1f4f4f] text-white border-0">
+                      <Link href="/leetcode">
+                        <LinkIcon className="h-4 w-4 mr-2" />
+                        Connect LeetCode
+                      </Link>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          ) : matches.length === 0 ? (
+            <div className="text-center py-16">
+              <Card className="max-w-md mx-auto border-2 border-cream-300 bg-cream-50">
+                <CardContent className="p-8">
+                  <h3 className="text-xl font-bold text-gray-900 mb-3">No matches found</h3>
+                  <p className="text-gray-600 mb-4">
+                    {mode === "dsa" 
+                      ? "We couldn't find any study partners matching your LeetCode profile right now."
+                      : "We couldn't find any project partners matching your profile right now."}
+                  </p>
+                  <p className="text-gray-600 text-sm">
+                    Check back later as more developers join the platform!
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          ) : (
+            /* Matches display */
+            <div className="w-full">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">
+                {mode === "dsa" ? "Your Study Partner Matches" : "Your Project Partner Matches"}
+              </h2>
+              <div className="overflow-x-auto pb-4">
+                <div className="flex gap-6 min-w-max px-4">
                 <AnimatePresence>
-                  {currentPeers.slice(0, 8).map((peer) => (
+                  {matches.slice(0, 8).map((peer) => (
                     <motion.div
-                      key={peer.id}
+                      key={peer.peerUserId}
                       layout
                       initial={{ opacity: 0, scale: 0.8, y: 50 }}
                       animate={
-                        animatingCards.has(`${peer.id}-skip`)
+                        animatingCards.has(`${peer.peerUserId}-skip`)
                           ? { opacity: 0, scale: 0.8, y: 100 }
-                          : animatingCards.has(`${peer.id}-connect`)
+                          : animatingCards.has(`${peer.peerUserId}-connect`)
                             ? { opacity: 0, scale: 0.8, y: -100 }
                             : { opacity: 1, scale: 1, y: 0 }
                       }
@@ -778,24 +840,17 @@ export default function PeerMatchingPage() {
                         <CardContent className="p-6 h-full flex flex-col">
                           <div className="flex items-center gap-4 mb-4">
                             <div className="relative">
-                              <img
-                                src={peer.avatar || "/placeholder.svg"}
-                                alt={peer.name}
-                                className="w-12 h-12 rounded-full object-cover border-2 border-cream-300"
-                              />
-                              {peer.isOnline && (
-                                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
-                              )}
+                              <div className="w-12 h-12 bg-[#8b1538] rounded-full flex items-center justify-center text-white font-bold border-2 border-cream-300">
+                                {peer.displayName.slice(0, 2).toUpperCase()}
+                              </div>
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h3 className="text-lg font-bold text-gray-900 truncate">{peer.name}</h3>
-                              {"title" in peer && peer.title && (
-                                <p className="text-[#8b1538] font-medium text-sm truncate">{peer.title}</p>
-                              )}
-                              {peer.location && <p className="text-gray-600 text-xs truncate">{peer.location}</p>}
+                              <h3 className="text-lg font-bold text-gray-900 truncate">{peer.displayName}</h3>
+                              <p className="text-[#8b1538] font-medium text-sm truncate">{peer.title}</p>
+                              <p className="text-gray-600 text-xs capitalize">{peer.experienceLevel}</p>
                             </div>
                             <div className="text-right">
-                              <div className="text-xl font-bold text-[#8b1538]">{peer.matchScore}%</div>
+                              <div className="text-xl font-bold text-[#8b1538]">{Math.round(peer.overallScore)}</div>
                               <div className="text-xs text-gray-500">Match</div>
                             </div>
                           </div>
@@ -803,92 +858,84 @@ export default function PeerMatchingPage() {
                           <div className="flex-1 space-y-3 overflow-y-auto">
                             <p className="text-gray-700 text-sm leading-relaxed line-clamp-3">{peer.bio}</p>
 
-                            {mode === "resume" && "sharedSkills" in peer && (
-                              <>
-                                <div>
-                                  <h4 className="font-semibold text-gray-900 mb-2 text-sm">Shared Skills</h4>
-                                  <div className="flex flex-wrap gap-1">
-                                    {peer.sharedSkills.slice(0, 3).map((skill) => (
-                                      <Badge
-                                        key={skill}
-                                        className="bg-[#8b1538]/10 text-[#8b1538] border-[#8b1538]/20 text-xs"
-                                      >
-                                        {skill}
-                                      </Badge>
-                                    ))}
-                                    {peer.sharedSkills.length > 3 && (
-                                      <Badge className="bg-gray-100 text-gray-600 text-xs">
-                                        +{peer.sharedSkills.length - 3}
-                                      </Badge>
-                                    )}
-                                  </div>
+                            {peer.sharedSkills && peer.sharedSkills.length > 0 && (
+                              <div>
+                                <h4 className="font-semibold text-gray-900 mb-2 text-sm">Shared Skills</h4>
+                                <div className="flex flex-wrap gap-1">
+                                  {peer.sharedSkills.slice(0, 3).map((skill) => (
+                                    <Badge
+                                      key={skill}
+                                      className="bg-[#8b1538]/10 text-[#8b1538] border-[#8b1538]/20 text-xs"
+                                    >
+                                      {skill}
+                                    </Badge>
+                                  ))}
+                                  {peer.sharedSkills.length > 3 && (
+                                    <Badge className="bg-gray-100 text-gray-600 text-xs">
+                                      +{peer.sharedSkills.length - 3}
+                                    </Badge>
+                                  )}
                                 </div>
-                                <div>
-                                  <h4 className="font-semibold text-gray-900 mb-2 text-sm">Complementary Skills</h4>
-                                  <div className="flex flex-wrap gap-1">
-                                    {peer.complementarySkills.slice(0, 3).map((skill) => (
-                                      <Badge
-                                        key={skill}
-                                        className="bg-[#2f5f5f]/10 text-[#2f5f5f] border-[#2f5f5f]/20 text-xs"
-                                      >
-                                        {skill}
-                                      </Badge>
-                                    ))}
-                                    {peer.complementarySkills.length > 3 && (
-                                      <Badge className="bg-gray-100 text-gray-600 text-xs">
-                                        +{peer.complementarySkills.length - 3}
-                                      </Badge>
-                                    )}
-                                  </div>
-                                </div>
-                              </>
+                              </div>
                             )}
 
-                            {mode === "dsa" && "strengths" in peer && (
-                              <>
-                                <div>
-                                  <h4 className="font-semibold text-gray-900 mb-2 text-sm">Strengths</h4>
-                                  <div className="flex flex-wrap gap-1">
-                                    {peer.strengths.slice(0, 3).map((strength) => (
-                                      <Badge
-                                        key={strength}
-                                        className="bg-[#27ae60]/10 text-[#27ae60] border-[#27ae60]/20 text-xs"
-                                      >
-                                        {strength}
-                                      </Badge>
-                                    ))}
-                                    {peer.strengths.length > 3 && (
-                                      <Badge className="bg-gray-100 text-gray-600 text-xs">
-                                        +{peer.strengths.length - 3}
-                                      </Badge>
-                                    )}
-                                  </div>
+                            {peer.complementarySkills && peer.complementarySkills.length > 0 && (
+                              <div>
+                                <h4 className="font-semibold text-gray-900 mb-2 text-sm">Complementary Skills</h4>
+                                <div className="flex flex-wrap gap-1">
+                                  {peer.complementarySkills.slice(0, 3).map((skill) => (
+                                    <Badge
+                                      key={skill}
+                                      className="bg-[#2f5f5f]/10 text-[#2f5f5f] border-[#2f5f5f]/20 text-xs"
+                                    >
+                                      {skill}
+                                    </Badge>
+                                  ))}
+                                  {peer.complementarySkills.length > 3 && (
+                                    <Badge className="bg-gray-100 text-gray-600 text-xs">
+                                      +{peer.complementarySkills.length - 3}
+                                    </Badge>
+                                  )}
                                 </div>
-                                <div className="grid grid-cols-4 gap-1 text-center">
-                                  <div className="bg-green-50 p-2 rounded">
-                                    <div className="text-sm font-bold text-green-600">{peer.easySolved}</div>
-                                    <div className="text-xs text-gray-600">Easy</div>
-                                  </div>
-                                  <div className="bg-yellow-50 p-2 rounded">
-                                    <div className="text-sm font-bold text-yellow-600">{peer.mediumSolved}</div>
-                                    <div className="text-xs text-gray-600">Med</div>
-                                  </div>
-                                  <div className="bg-red-50 p-2 rounded">
-                                    <div className="text-sm font-bold text-red-600">{peer.hardSolved}</div>
-                                    <div className="text-xs text-gray-600">Hard</div>
-                                  </div>
-                                  <div className="bg-gray-50 p-2 rounded">
-                                    <div className="text-sm font-bold text-gray-600">{peer.totalSolved}</div>
-                                    <div className="text-xs text-gray-600">Total</div>
-                                  </div>
-                                </div>
-                              </>
+                              </div>
                             )}
+
+                            {peer.leetcodeStats && (
+                              <div className="grid grid-cols-4 gap-1 text-center">
+                                <div className="bg-green-50 p-2 rounded">
+                                  <div className="text-sm font-bold text-green-600">{peer.leetcodeStats.easy_solved}</div>
+                                  <div className="text-xs text-gray-600">Easy</div>
+                                </div>
+                                <div className="bg-yellow-50 p-2 rounded">
+                                  <div className="text-sm font-bold text-yellow-600">{peer.leetcodeStats.medium_solved}</div>
+                                  <div className="text-xs text-gray-600">Med</div>
+                                </div>
+                                <div className="bg-red-50 p-2 rounded">
+                                  <div className="text-sm font-bold text-red-600">{peer.leetcodeStats.hard_solved}</div>
+                                  <div className="text-xs text-gray-600">Hard</div>
+                                </div>
+                                <div className="bg-gray-50 p-2 rounded">
+                                  <div className="text-sm font-bold text-gray-600">{peer.leetcodeStats.total_solved}</div>
+                                  <div className="text-xs text-gray-600">Total</div>
+                                </div>
+                              </div>
+                            )}
+
+                            <div>
+                              <h4 className="font-semibold text-gray-900 mb-2 text-sm">Looking For</h4>
+                              <div className="flex flex-wrap gap-1">
+                                {peer.lookingFor.slice(0, 3).map((item) => (
+                                  <Badge key={item} className="bg-gray-100 text-gray-700 border-gray-200 text-xs capitalize">
+                                    {item}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
                           </div>
 
                           <div className="flex gap-3 mt-4">
                             <motion.button
-                              onClick={() => handleSkip(peer.id)}
+                              onClick={() => handleSkip(peer.peerUserId)}
                               whileHover={{ scale: 1.02 }}
                               whileTap={{ scale: 0.98 }}
                               className="flex-1 py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors text-sm"
@@ -896,7 +943,7 @@ export default function PeerMatchingPage() {
                               Skip
                             </motion.button>
                             <motion.button
-                              onClick={() => handleConnect(peer.id)}
+                              onClick={() => handleConnect(peer.peerUserId)}
                               whileHover={{ scale: 1.02 }}
                               whileTap={{ scale: 0.98 }}
                               className="flex-1 py-2 px-4 bg-[#8b1538] hover:bg-[#7a1230] text-white rounded-lg font-medium transition-colors text-sm"
@@ -912,14 +959,17 @@ export default function PeerMatchingPage() {
               </div>
             </div>
 
-            {currentPeers.length > 4 && (
+            {matches.length > 4 && (
               <div className="flex justify-center mt-4">
                 <p className="text-sm text-gray-500">← Scroll to see more profiles →</p>
               </div>
             )}
-          </div>
+            </div>
+          )}
 
-          <div className="max-w-2xl mx-auto">
+          {/* Collaborative Achievements section - only show if there are matches */}
+          {matches.length > 0 && (
+            <div className="max-w-2xl mx-auto">
             <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Recent Collaborative Achievements</h2>
             <div className="space-y-4">
               {posts.map((post) => (
@@ -969,7 +1019,8 @@ export default function PeerMatchingPage() {
                 </Card>
               ))}
             </div>
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

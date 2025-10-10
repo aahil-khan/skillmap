@@ -331,3 +331,178 @@ export async function hasCompletedSetup(): Promise<boolean> {
     return false;
   }
 }
+
+// ============================================
+// PEER MATCHING API CALLS
+// ============================================
+
+export interface PeerProfile {
+  userid: string;
+  display_name: string;
+  title: string;
+  bio: string;
+  experience_level: 'Entry Level' | '1-3 years' | '3-5 years' | '5+ years' | 'Student';
+  availability: 'Full-time' | 'Part-time' | 'Weekends only' | 'Evenings' | 'Flexible';
+  looking_for: ('project' | 'dsa' | 'mentorship')[];
+  skill_tags: string[];
+  interest_areas: string[];
+  is_open_to_connections: boolean;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface PeerMatch {
+  peerUserId: string;
+  displayName: string;
+  title: string;
+  bio: string;
+  experienceLevel: string;
+  availability: string;
+  lookingFor: string[];
+  skillTags: string[];
+  interestAreas: string[];
+  overallScore: number;
+  sharedSkills: string[];
+  complementarySkills: string[];
+  leetcodeStats?: {
+    username: string;
+    total_solved: number;
+    easy_solved: number;
+    medium_solved: number;
+    hard_solved: number;
+  };
+}
+
+export interface PeerConnection {
+  id: string;
+  sender_userid: string;
+  receiver_userid: string;
+  connection_type: 'project' | 'dsa' | 'mentorship';
+  status: 'pending' | 'accepted' | 'declined' | 'blocked';
+  sender_message?: string;
+  responded_at?: string;
+  created_at: string;
+  sender_profile?: PeerProfile;
+  receiver_profile?: PeerProfile;
+}
+
+export interface CreatePeerProfileData {
+  display_name: string;
+  title: string;
+  bio: string;
+  experience_level: 'Entry Level' | '1-3 years' | '3-5 years' | '5+ years' | 'Student';
+  availability: 'Full-time' | 'Part-time' | 'Weekends only' | 'Evenings' | 'Flexible';
+  looking_for: ('project' | 'dsa' | 'mentorship')[];
+}
+
+export interface SendConnectionData {
+  receiverId: string;
+  connectionType: 'project' | 'dsa' | 'mentorship';
+  message?: string;
+}
+
+/**
+ * Create or update peer profile
+ */
+export async function upsertPeerProfile(profileData: CreatePeerProfileData): Promise<PeerProfile> {
+  return apiRequest<PeerProfile>('/peer/profile', {
+    method: 'POST',
+    body: JSON.stringify(profileData),
+  });
+}
+
+/**
+ * Get current user's peer profile
+ */
+export async function getPeerProfile(): Promise<PeerProfile | null> {
+  try {
+    return await apiRequest<PeerProfile>('/peer/profile');
+  } catch (error) {
+    // Profile might not exist yet
+    return null;
+  }
+}
+
+/**
+ * Deactivate peer profile
+ */
+export async function deactivatePeerProfile(): Promise<{ success: boolean; message: string }> {
+  return apiRequest<{ success: boolean; message: string }>('/peer/profile', {
+    method: 'DELETE',
+  });
+}
+
+/**
+ * Get recommended peer matches
+ */
+export async function getRecommendedMatches(
+  matchType: 'project' | 'dsa' | 'both' = 'both',
+  limit: number = 20
+): Promise<PeerMatch[]> {
+  const response = await apiRequest<{ matches: any[]; total: number; match_type: string }>(
+    `/peer/matches?type=${matchType}&limit=${limit}`
+  );
+  
+  // Transform backend response to frontend structure
+  const matches = response.matches || [];
+  
+  return matches.map((match: any) => ({
+    peerUserId: match.peer_profile?.userid || '',
+    displayName: match.peer_profile?.display_name || '',
+    title: match.peer_profile?.title || '',
+    bio: match.peer_profile?.bio || '',
+    experienceLevel: match.peer_profile?.experience_level || '',
+    availability: match.peer_profile?.availability || '',
+    lookingFor: match.peer_profile?.looking_for || [],
+    skillTags: match.peer_profile?.skill_tags || [],
+    interestAreas: match.peer_profile?.interest_areas || [],
+    overallScore: match.match_score || 0,
+    sharedSkills: match.shared_skills || [],
+    complementarySkills: match.complementary_skills || [],
+    leetcodeStats: match.peer_profile?.leetcode_stats || undefined,
+  }));
+}
+
+/**
+ * Send connection request to a peer
+ */
+export async function sendConnectionRequest(data: SendConnectionData): Promise<PeerConnection> {
+  return apiRequest<PeerConnection>('/peer/connect', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Skip a peer (track interaction)
+ */
+export async function skipPeer(peerUserId: string, matchScore: number): Promise<{ success: boolean; message: string }> {
+  return apiRequest<{ success: boolean; message: string }>('/peer/skip', {
+    method: 'POST',
+    body: JSON.stringify({ peerUserId, matchScore }),
+  });
+}
+
+/**
+ * Get user's connections
+ */
+export async function getUserConnections(
+  status?: 'pending' | 'accepted' | 'declined' | 'blocked'
+): Promise<PeerConnection[]> {
+  const queryString = status ? `?status=${status}` : '';
+  return apiRequest<PeerConnection[]>(`/peer/connections${queryString}`);
+}
+
+/**
+ * Respond to a connection request
+ */
+export async function respondToConnection(
+  connectionId: string,
+  response: 'accept' | 'decline'
+): Promise<PeerConnection> {
+  return apiRequest<PeerConnection>(`/peer/connections/${connectionId}/respond`, {
+    method: 'POST',
+    body: JSON.stringify({ response }),
+  });
+}
