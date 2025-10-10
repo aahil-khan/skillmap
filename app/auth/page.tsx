@@ -191,8 +191,6 @@ function AuthPageContent() {
 
   return (
     <div className="min-h-screen skillmap-bg">
-      <Navbar />
-
       <div className="container mx-auto px-4 py-16 max-w-md">
         <Card
           className={`shadow-xl border-0 card-hover transition-all duration-1000 ${isLoaded ? "animate-scaleIn" : "opacity-0 scale-90"}`}

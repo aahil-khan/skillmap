@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { GlobalErrorBoundaryProvider } from '@/components/GlobalErrorBoundary'
+import Navbar from '@/components/Navbar'
 
 export const metadata: Metadata = {
   title: 'SkillMap',
@@ -16,6 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <GlobalErrorBoundaryProvider>
+          <Navbar />
           {children}
         </GlobalErrorBoundaryProvider>
       </body>
