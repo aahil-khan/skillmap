@@ -81,7 +81,18 @@ export default function ConnectionsPage() {
     setLoadingMessages(true)
     try {
       const data = await getConnectionMessages(connection.id)
-      setMessages(data.messages)
+      console.log('[Connections] Loaded messages response:', data)
+      
+      // apiRequest already unwraps data.data, so data is { connection_id, messages, count }
+      const messagesList = data.messages || []
+      
+      // Ensure messages is always an array with valid structure
+      const validMessages = Array.isArray(messagesList) 
+        ? messagesList.filter(msg => msg && msg.id && msg.sender_userid)
+        : []
+      
+      console.log('[Connections] Valid messages count:', validMessages.length)
+      setMessages(validMessages)
     } catch (error: any) {
       toast({
         title: "Failed to load messages",
@@ -98,8 +109,17 @@ export default function ConnectionsPage() {
 
     setSending(true)
     try {
-      const result = await sendConnectionMessage(selectedConnection.id, messageText.trim())
-      setMessages([...messages, result.data])
+      const newMessage = await sendConnectionMessage(selectedConnection.id, messageText.trim())
+      console.log('[Connections] Message sent:', newMessage)
+      
+      // Add the new message to the messages array
+      if (newMessage && newMessage.id && newMessage.sender_userid) {
+        setMessages([...messages, newMessage])
+        console.log('[Connections] Added new message to state')
+      } else {
+        console.error('[Connections] Invalid message structure:', newMessage)
+      }
+      
       setMessageText("")
       toast({
         title: "Message sent!",
@@ -176,8 +196,12 @@ export default function ConnectionsPage() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {messages.map((msg) => {
-                      const isMe = msg.sender_userid === localStorage.getItem('user-id')
+                    {messages
+                      .filter(msg => msg && msg.id && msg.sender_userid) // Filter out invalid messages
+                      .map((msg) => {
+                      const currentUserId = localStorage.getItem('user-id')
+                      const isMe = msg.sender_userid === currentUserId
+                      
                       return (
                         <div
                           key={msg.id}

@@ -606,8 +606,8 @@ export async function getConnectionMessages(
 export async function sendConnectionMessage(
   connectionId: string,
   message: string
-): Promise<{ success: boolean; data: Message; message: string }> {
-  return apiRequest<{ success: boolean; data: Message; message: string }>(
+): Promise<Message> {
+  return apiRequest<Message>(
     `/peer/connections/${connectionId}/messages`,
     {
       method: 'POST',

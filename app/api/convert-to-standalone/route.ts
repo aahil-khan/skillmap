@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5005'
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     
     // Forward the request to the backend
-    const backendResponse = await fetch('http://localhost:5005/convert-to-standalone', {
+    const backendResponse = await fetch(`${BACKEND_URL}/convert-to-standalone`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,

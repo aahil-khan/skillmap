@@ -1,4 +1,7 @@
 // Test function to verify JWT authentication is working
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5005'
+
 export async function testAuth() {
   const token = localStorage.getItem('sb-jwt')
   console.log('Testing authentication...')
@@ -12,7 +15,7 @@ export async function testAuth() {
   console.log('Token preview:', token.substring(0, 50) + '...')
   
   try {
-    const response = await fetch('http://localhost:5005/health', {
+    const response = await fetch(`${BACKEND_URL}/health`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,

@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5005'
 
 export async function POST(request: NextRequest) {
   try {
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
     const backendFormData = new FormData()
     backendFormData.append('resume', file)
 
-    const response = await fetch('http://localhost:5005/upload-resume', {
+    const response = await fetch(`${BACKEND_URL}/upload-resume`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,

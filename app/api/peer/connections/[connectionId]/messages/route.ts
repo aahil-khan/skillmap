@@ -5,7 +5,7 @@
 
 import { NextResponse } from 'next/server';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5005';
+const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5005';
 
 export async function GET(
   request: Request,
@@ -21,30 +21,17 @@ export async function GET(
       );
     }
 
-    // Extract user_id from JWT token
-    const token = authHeader.replace('Bearer ', '');
-    let user_id;
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      user_id = payload.sub;
-    } catch (e) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid token' },
-        { status: 401 }
-      );
-    }
-
     const { searchParams } = new URL(request.url);
     const limit = searchParams.get('limit') || '50';
 
     const url = new URL(`${API_URL}/peer/connections/${params.connectionId}/messages`);
-    url.searchParams.append('user_id', user_id);
     url.searchParams.append('limit', limit);
 
     const response = await fetch(url.toString(), {
       method: 'GET',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Authorization': authHeader
       }
     });
 
@@ -88,19 +75,6 @@ export async function POST(
       );
     }
 
-    // Extract user_id from JWT token
-    const token = authHeader.replace('Bearer ', '');
-    let user_id;
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      user_id = payload.sub;
-    } catch (e) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid token' },
-        { status: 401 }
-      );
-    }
-
     const body = await request.json();
     const { message } = body;
 
@@ -109,9 +83,10 @@ export async function POST(
       {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': authHeader
         },
-        body: JSON.stringify({ user_id, message })
+        body: JSON.stringify({ message })
       }
     );
 

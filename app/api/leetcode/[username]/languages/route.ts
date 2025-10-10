@@ -1,3 +1,4 @@
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5005'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(
@@ -8,7 +9,7 @@ export async function GET(
     const { username } = params
     
     // This is a public API, no authentication required
-    const backendResponse = await fetch(`http://localhost:5005/api/leetcode/${username}/languages`, {
+    const backendResponse = await fetch(`${BACKEND_URL}/api/leetcode/${username}/languages`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

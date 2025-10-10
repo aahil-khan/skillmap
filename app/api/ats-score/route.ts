@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5005'
 
 export async function GET(request: NextRequest) {
   try {
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
     }
     
     // Token is valid, forward the request to the backend
-    const backendResponse = await fetch('http://localhost:5005/ats-score', {
+    const backendResponse = await fetch(`${BACKEND_URL}/ats-score`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,

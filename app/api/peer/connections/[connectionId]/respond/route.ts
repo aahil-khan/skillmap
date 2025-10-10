@@ -5,7 +5,7 @@
 
 import { NextResponse } from 'next/server';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5005';
+const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5005';
 
 export async function POST(
   request: Request,
@@ -21,19 +21,6 @@ export async function POST(
       );
     }
 
-    // Extract user_id from JWT token
-    const token = authHeader.replace('Bearer ', '');
-    let user_id;
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      user_id = payload.sub;
-    } catch (e) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid token' },
-        { status: 401 }
-      );
-    }
-
     const body = await request.json();
     const { action } = body;
 
@@ -42,9 +29,10 @@ export async function POST(
       {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': authHeader
         },
-        body: JSON.stringify({ user_id, action })
+        body: JSON.stringify({ action })
       }
     );
 
