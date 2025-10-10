@@ -301,14 +301,15 @@ function DashboardOverviewPageContent() {
                 {/* Skill Distribution with Pie Chart */}
                 <div>
                   <h3 className="font-semibold mb-4">Skill Distribution</h3>
-                  <div className="flex justify-center mb-4">
+                  <div className="flex justify-center items-center gap-8 mb-6 w-full">
+                    {/* Chart */}
                     <ChartContainer
                       config={{
                         value: {
                           label: "Skills",
                         },
                       }}
-                      className="h-80 w-80"
+                      className="h-[350px] w-full max-w-[450px]"
                     >
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
@@ -317,30 +318,39 @@ function DashboardOverviewPageContent() {
                             cx="50%"
                             cy="50%"
                             labelLine={false}
-                            label={({ name, percent }) =>
-                              `${name} ${typeof percent === "number" ? (percent * 100).toFixed(0) : "0"}%`
-                            }
-                            outerRadius={120}
+                            label={({ value }) => `${value}%`}
+                            outerRadius={130}
+                            innerRadius={60}
                             fill="#8884d8"
                             dataKey="value"
+                            paddingAngle={2}
                           >
                             {skillCategories.map((entry, index) => (
                               <Cell key={`cell-${index}`} fill={entry.color} />
                             ))}
                           </Pie>
-                          <Tooltip />
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: 'white', 
+                              border: '1px solid #e5e7eb', 
+                              borderRadius: '8px',
+                              padding: '8px 12px'
+                            }}
+                            formatter={(value: any, name: any, props: any) => [props.payload.name, 'Skill']}
+                          />
                         </PieChart>
                       </ResponsiveContainer>
                     </ChartContainer>
-                  </div>
-                  <div className="flex flex-wrap justify-center gap-4">
-                    {skillCategories.map((category) => (
-                      <div key={category.name} className="flex items-center space-x-2">
-                        <div className="w-4 h-4 rounded-full" style={{ backgroundColor: category.color }}></div>
-                        <span className="text-sm font-medium text-gray-700">{category.name}</span>
-                        <span className="text-sm text-gray-500">({category.value}%)</span>
-                      </div>
-                    ))}
+                    
+                    {/* Legend */}
+                    <div className="flex flex-col gap-3">
+                      {skillCategories.map((category) => (
+                        <div key={category.name} className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded-sm flex-shrink-0" style={{ backgroundColor: category.color }}></div>
+                          <span className="text-sm font-medium text-gray-700">{category.name}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
 

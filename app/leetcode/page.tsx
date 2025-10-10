@@ -996,7 +996,7 @@ function LeetCodePageContent() {
                         <Badge className="bg-blue-100 text-blue-800">
                           <Star className="w-3 h-3 mr-1" />
                           {profile?.reputation || 0} reputation
-                        </Badge>
+                        </Badge>  
                       </div>
                     </div>
                   </div>

@@ -338,7 +338,7 @@ function ResultsPageContent() {
             </Link>
           </Button>
           <Button asChild className="skillmap-button text-white">
-            <Link href="/dashboard/overview">
+            <Link href="/dashboard">
               <ArrowRight className="mr-2 h-4 w-4" />
               Go to Dashboard
             </Link>
