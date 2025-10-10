@@ -7,7 +7,26 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { ErrorAlert } from "@/components/ui/error-alert"
-import { Brain, CheckCircle, AlertTriangle, TrendingUp, ArrowLeft, ArrowRight, Menu, User, Loader2 } from "lucide-react"
+import { 
+  Brain, 
+  CheckCircle, 
+  AlertTriangle, 
+  TrendingUp, 
+  ArrowLeft, 
+  ArrowRight, 
+  Menu, 
+  User,
+  Target,
+  GraduationCap,
+  Lightbulb,
+  ArrowUpRight,
+  BookOpen,
+  Code,
+  Users,
+  GitBranch,
+  ChevronUp,
+  ChevronDown
+} from "lucide-react"
 import { api, APIErrorClass, isAuthError } from "@/lib/api-error-handler"
 import { getBackendUrl, BACKEND_ENDPOINTS } from "@/lib/config"
 import Link from "next/link"
@@ -337,90 +356,123 @@ function ResultsPageContent() {
               </CardHeader>
             </Card>
 
-            <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-3">
+            <div className={`grid gap-6 md:grid-cols-1 ${
+              // Calculate grid columns based on number of non-empty sections
+              (() => {
+                const sections = [
+                  categoryAnalysis.skills.gaps.length > 0,
+                  categoryAnalysis.skills.needs_improvement.length > 0,
+                  categoryAnalysis.skills.present.length > 0
+                ].filter(Boolean).length;
+                
+                switch(sections) {
+                  case 1: return 'lg:grid-cols-1 max-w-2xl mx-auto';
+                  case 2: return 'lg:grid-cols-2';
+                  default: return 'lg:grid-cols-3';
+                }
+              })()
+            }`}>
               {/* Skills Gaps */}
-              <Card className="animate-slideInUp animate-delay-200">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-red-700">
-                    <AlertTriangle className="mr-2 h-5 w-5" />
-                    Missing Skills ({categoryAnalysis.skills.gaps.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {categoryAnalysis.skills.gaps.map((skill, skillIndex) => (
-                    <div key={skillIndex} className="p-3 border rounded-lg bg-red-50">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium text-gray-900">{skill.name}</h4>
-                        {skill.priority && (
-                          <Badge className={getPriorityColor(skill.priority)}>
-                            {skill.priority} priority
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-600">{skill.description}</p>
+              {categoryAnalysis.skills.gaps.length > 0 && (
+                <Card className="animate-slideInUp animate-delay-200">
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <AlertTriangle className="mr-2 h-5 w-5 text-red-700" />
+                      <span className="text-red-700">Missing Skills ({categoryAnalysis.skills.gaps.length})</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div 
+                      className="space-y-3 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent"
+                      style={{ height: 'calc(3 * 120px)', maxHeight: '360px' }}
+                    >
+                      {categoryAnalysis.skills.gaps.map((skill, skillIndex) => (
+                        <div key={skillIndex} className="p-3 border rounded-lg bg-red-50">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-medium text-gray-900">{skill.name}</h4>
+                            {skill.priority && (
+                              <Badge className={getPriorityColor(skill.priority)}>
+                                {skill.priority} priority
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-600">{skill.description}</p>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                  {categoryAnalysis.skills.gaps.length === 0 && (
-                    <p className="text-gray-500 text-center py-4">No skill gaps identified!</p>
-                  )}
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Skills to Improve */}
-              <Card className="animate-slideInUp animate-delay-400">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-yellow-700">
-                    <TrendingUp className="mr-2 h-5 w-5" />
-                    Needs Improvement ({categoryAnalysis.skills.needs_improvement.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {categoryAnalysis.skills.needs_improvement.map((skill, skillIndex) => (
-                    <div key={skillIndex} className="p-3 border rounded-lg bg-yellow-50">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium text-gray-900">{skill.name}</h4>
-                        {skill.user_level && (
-                          <Badge className={getLevelColor(skill.user_level)}>
-                            {skill.user_level}
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-600 mb-2">{skill.description}</p>
-                      {skill.recommendation && (
-                        <p className="text-xs text-blue-600 font-medium">{skill.recommendation}</p>
-                      )}
+              {categoryAnalysis.skills.needs_improvement.length > 0 && (
+                <Card className="animate-slideInUp animate-delay-400">
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <TrendingUp className="mr-2 h-5 w-5 text-yellow-700" />
+                      <span className="text-yellow-700">Needs Improvement ({categoryAnalysis.skills.needs_improvement.length})</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div 
+                      className="space-y-3 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent"
+                      style={{ height: 'calc(3 * 120px)', maxHeight: '360px' }}
+                    >
+                      {categoryAnalysis.skills.needs_improvement.map((skill, skillIndex) => (
+                        <div key={skillIndex} className="p-3 border rounded-lg bg-yellow-50">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-medium text-gray-900">{skill.name}</h4>
+                            {skill.user_level && (
+                              <Badge className={getLevelColor(skill.user_level)}>
+                                {skill.user_level}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-600 mb-2">{skill.description}</p>
+                          {skill.recommendation && (
+                            <p className="text-xs text-blue-600 font-medium">{skill.recommendation}</p>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Strong Skills */}
-              <Card className="animate-slideInUp animate-delay-600">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-green-700">
-                    <CheckCircle className="mr-2 h-5 w-5" />
-                    Strong Skills ({categoryAnalysis.skills.present.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {categoryAnalysis.skills.present.map((skill, skillIndex) => (
-                    <div key={skillIndex} className="p-3 border rounded-lg bg-green-50">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium text-gray-900">{skill.name}</h4>
-                        {skill.user_level && (
-                          <Badge className={getLevelColor(skill.user_level)}>
-                            {skill.user_level}
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-600 mb-2">{skill.description}</p>
-                      {skill.recommendation && (
-                        <p className="text-xs text-green-600 font-medium">{skill.recommendation}</p>
-                      )}
+              {categoryAnalysis.skills.present.length > 0 && (
+                <Card className="animate-slideInUp animate-delay-600">
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <CheckCircle className="mr-2 h-5 w-5 text-green-700" />
+                      <span className="text-green-700">Strong Skills ({categoryAnalysis.skills.present.length})</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div 
+                      className="space-y-3 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent"
+                      style={{ height: 'calc(3 * 120px)', maxHeight: '360px' }}
+                    >
+                      {categoryAnalysis.skills.present.map((skill, skillIndex) => (
+                        <div key={skillIndex} className="p-3 border rounded-lg bg-green-50">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-medium text-gray-900">{skill.name}</h4>
+                            {skill.user_level && (
+                              <Badge className={getLevelColor(skill.user_level)}>
+                                {skill.user_level}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-600 mb-2">{skill.description}</p>
+                          {skill.recommendation && (
+                            <p className="text-xs text-green-600 font-medium">{skill.recommendation}</p>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </div>
         ))}
@@ -433,11 +485,150 @@ function ResultsPageContent() {
               Personalized Learning Recommendations
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div 
-              className="prose prose-sm max-w-none text-gray-700"
-              dangerouslySetInnerHTML={{ __html: analysis.summary }}
-            />
+          <CardContent className="space-y-6">
+            {/* Target Area */}
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+              <h3 className="text-lg font-semibold text-blue-800 mb-2 flex items-center">
+                <Target className="h-5 w-5 mr-2" />
+                Target Area
+              </h3>
+              <p className="text-blue-700">Based on your goal, I can see you're targeting <span className="font-semibold">{analysis.user_goal}</span></p>
+            </div>
+
+            {/* Strengths Section */}
+            <div className="bg-green-50 p-4 rounded-lg border border-green-100">
+              <h3 className="text-lg font-semibold text-green-800 mb-2 flex items-center">
+                <CheckCircle className="h-5 w-5 mr-2" />
+                Your Strengths
+              </h3>
+              <div className="text-green-700 prose prose-sm">
+                {analysis.analysis.map((category) => 
+                  category.skills.present.length > 0 && (
+                    <div key={category.detected_category} className="mb-2">
+                      <span className="font-medium">{category.detected_category}:</span>{' '}
+                      {category.skills.present.map(skill => skill.name).join(', ')}
+                    </div>
+                  )
+                )}
+              </div>
+            </div>
+
+            {/* Learning Path */}
+            <div className="relative mt-8 pb-8">
+              {/* Timeline header */}
+              <div className="flex items-center mb-12">
+                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                  <GraduationCap className="h-6 w-6 text-blue-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-800 ml-4">Your Learning Path</h3>
+              </div>
+
+              {/* Timeline */}
+              <div className="relative max-h-[600px] overflow-y-auto max-w-3xl mx-auto scrollbar-thin scrollbar-thumb-blue-200 scrollbar-track-blue-50 hover:scrollbar-thumb-blue-300">
+                {/* Vertical line with gradient and glow */}
+                <div className="absolute left-[29px] top-0 bottom-0 w-[2px] bg-gradient-to-b from-blue-500 via-blue-400 to-blue-300">
+                  <div className="absolute inset-0 bg-blue-400 opacity-25 blur-sm"></div>
+                </div>
+
+                {/* Timeline items */}
+                {analysis.analysis.flatMap((category, categoryIndex) => 
+                  category.skills.gaps.map((skill, index) => (
+                    <div key={skill.name} className="relative mb-12 ml-20">
+                      {/* Timeline dot, connector, and phase label */}
+                      <div className="absolute -left-[40px] flex flex-col items-center sticky top-4">
+                        {/* Phase number and connecting line */}
+                        <div className="relative">
+                          <div className="w-10 h-10 rounded-full border-4 border-white shadow-[0_0_10px_rgba(59,130,246,0.5)] bg-gradient-to-r from-blue-500 to-blue-400 flex items-center justify-center text-white font-bold">
+                            {categoryIndex + index + 1}
+                          </div>
+                          {/* Connecting arrow */}
+                          {(categoryIndex + index + 1) < analysis.analysis.flatMap(c => c.skills.gaps).length && (
+                            <div className="absolute -bottom-14 left-1/2 transform -translate-x-1/2 w-0.5 h-8 bg-blue-200">
+                              <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 rotate-45 w-4 h-0.5 bg-blue-200"></div>
+                              <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 -rotate-45 w-4 h-0.5 bg-blue-200"></div>
+                            </div>
+                          )}
+                        </div>
+                        {/* Phase label */}
+                        <div className="absolute -left-24 top-1/2 -translate-y-1/2 whitespace-nowrap">
+                          <span className="text-sm font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
+                            Phase {categoryIndex + index + 1}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Content card with enhanced hover effect */}
+                      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 transition-all duration-300 hover:shadow-lg hover:border-blue-200 relative">
+                        {/* Decorative top border gradient */}
+                        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-blue-400 rounded-t-xl"></div>
+                        {/* Connecting line to next card */}
+                        {(categoryIndex + index + 1) < analysis.analysis.flatMap(c => c.skills.gaps).length && (
+                          <div className="absolute left-1/2 -bottom-12 transform -translate-x-1/2 flex items-center justify-center w-8 h-8">
+                            <div className="w-1.5 h-8 bg-gradient-to-b from-blue-200 to-transparent"></div>
+                          </div>
+                        )}
+                        
+                        {/* Skill header */}
+                        <div className="flex items-start justify-between mb-4 pt-2">
+                          <h4 className="text-lg font-semibold text-gray-900">{skill.name}</h4>
+                          <span className="px-4 py-1 text-sm rounded-full bg-blue-50 text-blue-700 font-medium">
+                            Phase {categoryIndex + index + 1}
+                          </span>
+                        </div>
+
+                        {/* Skill description */}
+                        <p className="text-gray-600 mb-4 leading-relaxed">{skill.description}</p>
+
+                        {/* Recommendation section with enhanced styling */}
+                        {skill.recommendation && (
+                          <div className="flex items-start mt-4 p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg border border-blue-200">
+                            <div className="p-2 rounded-full bg-blue-200 mr-3">
+                              <Lightbulb className="h-5 w-5 text-blue-700" />
+                            </div>
+                            <div>
+                              <h5 className="text-sm font-semibold text-blue-800 mb-1">Pro Tip</h5>
+                              <p className="text-sm text-blue-700 leading-relaxed">{skill.recommendation}</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+            {/* Next Steps */}
+            <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
+              <h3 className="text-lg font-semibold text-purple-800 mb-3 flex items-center">
+                <ArrowUpRight className="h-5 w-5 mr-2" />
+                Recommended Next Steps
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[
+                  {
+                    icon: <BookOpen className="h-4 w-4" />,
+                    text: "Complete courses on core missing skills first"
+                  },
+                  {
+                    icon: <Code className="h-4 w-4" />,
+                    text: "Build small projects to practice new concepts"
+                  },
+                  {
+                    icon: <Users className="h-4 w-4" />,
+                    text: "Join relevant communities and forums"
+                  },
+                  {
+                    icon: <GitBranch className="h-4 w-4" />,
+                    text: "Create a portfolio showcasing your progress"
+                  }
+                ].map((step, i) => (
+                  <div key={i} className="flex items-center space-x-2 text-purple-700">
+                    <div className="flex-shrink-0">{step.icon}</div>
+                    <span className="text-sm">{step.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
