@@ -150,11 +150,6 @@ function ResultsPageContent() {
   if (error) {
     return (
       <div className="min-h-screen skillmap-bg">
-        <header className="skillmap-header text-white">
-          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-            <Link href="/" className="text-2xl font-bold">skillMap</Link>
-          </div>
-        </header>
         <div className="container mx-auto px-4 py-16 max-w-2xl">
           <ErrorAlert
             error={error}
@@ -181,27 +176,6 @@ function ResultsPageContent() {
 
   return (
     <div className="min-h-screen skillmap-bg">
-      {/* Header */}
-      <header className="skillmap-header text-white animate-fadeInDown">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
-              <Menu className="h-5 w-5" />
-              <span className="ml-2 text-sm">explore</span>
-            </Button>
-          </div>
-
-          <Link href="/" className="text-2xl font-bold">
-            skillMap
-          </Link>
-
-          <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
-            <User className="h-5 w-5" />
-            <span className="ml-2 text-sm">login</span>
-          </Button>
-        </div>
-      </header>
-
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         {/* Header Section */}
         <div className="text-center mb-8 animate-fadeInUp">

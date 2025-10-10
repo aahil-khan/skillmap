@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
-import { Target, Award, Clock, ArrowRight, Briefcase, BookOpen, Code, Settings, TrendingUp } from "lucide-react"
+import { Target, Award, Clock, ArrowRight, Briefcase, BookOpen, Code, Settings, TrendingUp, Upload } from "lucide-react"
 import Link from "next/link"
 import { ChartContainer } from "@/components/ui/chart"
 import { api, APIErrorClass, isAuthError } from "@/lib/api-error-handler"
@@ -598,6 +598,27 @@ function DashboardOverviewPageContent() {
                   </p>
                 </>
               ) : null}
+            </CardContent>
+          </Card>
+
+          {/* Re-upload Resume */}
+          <Card className="shadow-lg border-0 rounded-2xl card-hover animate-slideInRight animate-delay-50">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Upload className="h-6 w-6 text-blue-600" />
+                <span>Update Your Resume</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-center">
+              <p className="text-gray-600 mb-4">
+                Get an updated ATS score by re-uploading your resume.
+              </p>
+              <Button asChild className="w-full skillmap-button text-white">
+                <Link href="/upload">
+                  Re-upload Resume
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
             </CardContent>
           </Card>
 

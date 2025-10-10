@@ -41,7 +41,8 @@ export default function DashboardLayout({
   const [isFetchingScore, setIsFetchingScore] = useState<boolean>(false)
 
   // Check if we're on a sub-page
-  const isOnSubPage = pathname !== "/dashboard" && (pathname === "/dashboard/learning-roadmap" || pathname === "/dashboard/peer-matching")
+  const isOnSubPage = pathname === "/dashboard/learning-roadmap" || pathname === "/dashboard/peer-matching"
+  const isDashboardPage = pathname === "/dashboard"
 
   useEffect(() => {
     let intervalId: NodeJS.Timeout | null = null
@@ -246,29 +247,6 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen skillmap-bg">
-      {/* Header */}
-      <header className="skillmap-header text-white animate-fadeInDown">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
-              <Menu className="h-5 w-5" />
-              <span className="ml-2 text-sm">explore</span>
-            </Button>
-          </div>
-
-          <Link href="/" className="text-2xl font-bold">
-            skillMap
-          </Link>
-
-          <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
-              <User className="h-5 w-5" />
-              <span className="ml-2 text-sm">{userProfile.name}</span>
-            </Button>
-          </div>
-        </div>
-      </header>
-
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         {/* Dashboard Header */}
         <div className="flex justify-between items-center mb-8 animate-fadeInUp">
@@ -380,31 +358,31 @@ export default function DashboardLayout({
               </div>
             ) : (
               <div className="grid md:grid-cols-3 gap-4">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                <div className="flex items-start space-x-3">
+                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
                     <User className="h-6 w-6 text-blue-600" />
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-900">{userProfile.name}</p>
                     <p className="text-sm text-gray-600">Full Name</p>
+                    <p className="font-semibold text-gray-900">{userProfile.name}</p>
                   </div>
                 </div>
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                <div className="flex items-start space-x-3">
+                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
                     <Mail className="h-6 w-6 text-green-600" />
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-900">{userProfile.email}</p>
                     <p className="text-sm text-gray-600">Email Address</p>
+                    <p className="font-semibold text-gray-900">{userProfile.email}</p>
                   </div>
                 </div>
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                <div className="flex items-start space-x-3">
+                  <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
                     <Calendar className="h-6 w-6 text-purple-600" />
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-900">{userProfile.resumeUploadDate}</p>
                     <p className="text-sm text-gray-600">Resume Upload</p>
+                    <p className="font-semibold text-gray-900">{userProfile.resumeUploadDate}</p>
                   </div>
                 </div>
                 {userProfile.title && (
@@ -419,7 +397,7 @@ export default function DashboardLayout({
         </Card>
 
         {/* Navigation Tabs */}
-        <div className="mb-6">
+        <div className={`mb-6 transition-opacity duration-500 ${isDashboardPage ? 'opacity-100' : 'opacity-100'}`}>
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8 items-center">
               {/* Back to Dashboard Button - slides in from left */}
@@ -443,7 +421,7 @@ export default function DashboardLayout({
               {/* Learning Roadmap and Peer Matching - slide right when sub-page is active */}
               <div 
                 className={`flex space-x-8 transition-all duration-500 ease-in-out ${
-                  isOnSubPage ? 'translate-x-0' : 'translate-x-0'
+                  isOnSubPage ? 'opacity-0 max-w-0' : 'opacity-100'
                 }`}
               >
                 <Button asChild variant="ghost" className="py-2 px-4 rounded-lg hover:bg-blue-50 transition-colors">
@@ -470,8 +448,11 @@ export default function DashboardLayout({
         </div>
 
         {/* Children content */}
-        <div className="mt-8">
-          {children}
+        <div className={`mt-8 transition-opacity duration-300 ${isDashboardPage ? 'opacity-100' : 'opacity-0'}`}>
+          {isDashboardPage && children}
+        </div>
+        <div className={`mt-8 transition-opacity duration-300 ${!isDashboardPage ? 'opacity-100' : 'opacity-0'}`}>
+          {!isDashboardPage && children}
         </div>
       </div>
     </div>

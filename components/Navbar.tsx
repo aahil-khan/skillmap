@@ -9,6 +9,8 @@ import { Menu, User, LogOut, ChevronDown } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { clearLocalStorageData } from "@/lib/api"
 
+import { AuthChangeEvent, Session } from "@supabase/supabase-js"
+
 interface NavbarProps {
   showExploreMenu?: boolean
   setShowExploreMenu?: (show: boolean) => void
@@ -23,75 +25,45 @@ export default function Navbar({ showExploreMenu, setShowExploreMenu }: NavbarPr
 
   useEffect(() => {
     const checkAuth = async () => {
-      // First check if we have a valid session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      console.log('Current session:', session, 'Session error:', sessionError)
-      
+      const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
-        setIsAuthenticated(true)
-        console.log('User from session:', session.user)
-        
-        // Update localStorage with current access token
-        localStorage.setItem('sb-jwt', session.access_token)
-        
-        // Fetch user details from custom users table
-        const { data: userData, error: fetchError } = await supabase
+        setIsAuthenticated(true);
+        const { data: userData } = await supabase
           .from('users')
           .select('email, full_name')
           .eq('id', session.user.id)
-          .single() 
-        
-        console.log('Custom user data:', userData, 'Fetch error:', fetchError)
+          .single();
         
         if (userData) {
-          setUserDetails(userData)
+          setUserDetails(userData);
         } else {
-          // User doesn't exist in custom table, let's try to create them or use auth data
-          console.log('User not found in custom table, using auth data')
-          
-          const authUserData = {
+          setUserDetails({
             email: session.user.email || '',
-            full_name: session.user.user_metadata?.full_name || 
-                      session.user.user_metadata?.name || 
-                      'User'
-          }
-          
-          // Try to insert the user into custom table for future use
-          if (session.user.email && authUserData.full_name !== 'User') {
-            const { error: insertError } = await supabase
-              .from('users')
-              .insert([
-                {
-                  id: session.user.id,
-                  email: session.user.email,
-                  full_name: authUserData.full_name
-                }
-              ])
-            
-            if (!insertError) {
-              console.log('Successfully created user in custom table')
-            } else {
-              console.log('Failed to create user in custom table:', insertError)
-            }
-          }
-          
-          setUserDetails(authUserData)
+            full_name: session.user.user_metadata?.full_name || 'User'
+          });
         }
       } else {
-        // No valid session, check stored token as backup
-        const token = typeof window !== 'undefined' ? localStorage.getItem('sb-jwt') : null
-        if (token) {
-          console.log('No session but token exists, clearing invalid token')
-          localStorage.removeItem('sb-jwt')
-        }
-        setIsAuthenticated(false)
-        setUserDetails(null)
+        setIsAuthenticated(false);
+        setUserDetails(null);
       }
-      
-      setIsLoading(false)
-    }
-    checkAuth()
-  }, [])
+      setIsLoading(false);
+    };
+
+    checkAuth();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
+      if (session?.user) {
+        checkAuth();
+      } else {
+        setIsAuthenticated(false);
+        setUserDetails(null);
+      }
+    });
+
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -150,17 +122,6 @@ export default function Navbar({ showExploreMenu, setShowExploreMenu }: NavbarPr
                           </div>
                           <hr className="my-3" />
                           <Button
-                            asChild
-                            variant="outline"
-                            size="sm"
-                            className="w-full mb-2 hover:bg-blue-50 hover:border-blue-300"
-                          >
-                            <Link href="/dashboard" className="flex items-center">
-                              <User className="h-4 w-4 mr-2" />
-                              Dashboard
-                            </Link>
-                          </Button>
-                          <Button
                             onClick={handleLogout}
                             variant="outline"
                             size="sm"
@@ -175,10 +136,15 @@ export default function Navbar({ showExploreMenu, setShowExploreMenu }: NavbarPr
                   )}
                 </div>
               ) : (
-                <Button variant="ghost" size="sm" className="text-white hover:bg-white/20" asChild>
-                  <Link href="/auth">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-white bg-white/10 hover:bg-white/20 rounded-full px-4 py-2 transition-all duration-300 shadow-lg"
+                  asChild
+                >
+                  <Link href="/auth" className="flex items-center">
                     <User className="h-5 w-5" />
-                    <span className="ml-2 text-sm">login</span>
+                    <span className="ml-2 text-sm font-semibold">Login</span>
                   </Link>
                 </Button>
               )}

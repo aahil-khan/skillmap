@@ -192,38 +192,6 @@ export default function UploadPage() {
 
   return (
     <div className="min-h-screen skillmap-bg">
-      {/* Header */}
-      <header className="skillmap-header text-white animate-fadeInDown">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-white hover:bg-white/20 transition-all duration-300 hover:scale-105"
-            >
-              <Menu className="h-5 w-5 transition-transform duration-300 hover:rotate-90" />
-              <span className="ml-2 text-sm">explore</span>
-            </Button>
-          </div>
-
-          <Link href="/" className="text-2xl font-bold hover:scale-105 transition-transform duration-300">
-            skillMap
-          </Link>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-white hover:bg-white/20 transition-all duration-300 hover:scale-105"
-            asChild
-          >
-            <Link href="/auth">
-              <User className="h-5 w-5" />
-              <span className="ml-2 text-sm">login</span>
-            </Link>
-          </Button>
-        </div>
-      </header>
-
       <div className="container mx-auto px-4 py-12 max-w-6xl">
         <Card
           className={`bg-white shadow-lg border-0 card-hover transition-all duration-1000 ${isLoaded ? "animate-scaleIn" : "opacity-0 scale-90"}`}

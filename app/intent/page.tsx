@@ -117,8 +117,6 @@ function IntentPageContent() {
 
   return (
     <div className="min-h-screen skillmap-bg">
-      <Navbar />
-
       <div className="container mx-auto px-4 py-16 max-w-3xl">
         <Card className="shadow-lg border-0 card-hover animate-scaleIn">
           <CardHeader className="text-center">
