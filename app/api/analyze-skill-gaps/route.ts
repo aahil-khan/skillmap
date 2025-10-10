@@ -1,4 +1,4 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -28,45 +28,46 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       )
     }
-
-    const formData = await request.formData()
-    const file = formData.get('resume') as File
     
-    if (!file) {
-      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 })
-    }
-
-    console.log(`Processing uploaded file: ${file.name}`)
+    // Get the request body
+    const body = await request.json()
     
-    // Forward the file to your backend server
-    const backendFormData = new FormData()
-    backendFormData.append('resume', file)
-
-    const response = await fetch('http://localhost:5005/upload-resume', {
+    // Forward the request to the backend
+    const backendResponse = await fetch('http://localhost:5005/analyze-skill-gaps', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
       },
-      body: backendFormData,
+      body: JSON.stringify(body),
     })
     
-    if (!response.ok) {
-      throw new Error(`Backend server responded with status: ${response.status}`)
+    if (!backendResponse.ok) {
+      const errorText = await backendResponse.text()
+      console.error('Backend error:', errorText)
+      
+      // Try to parse as JSON, otherwise return text
+      let errorData
+      try {
+        errorData = JSON.parse(errorText)
+      } catch {
+        errorData = { error: errorText }
+      }
+      
+      return NextResponse.json(
+        { success: false, error: errorData.error || errorData.message || 'Backend error' },
+        { status: backendResponse.status }
+      )
     }
     
-    const profileData = await response.json()
+    const data = await backendResponse.json()
+    return NextResponse.json(data)
     
-    return NextResponse.json({
-      success: true,
-      profile: profileData
-    })
-
   } catch (error) {
-    console.error('Error:', error)
-    
-    return NextResponse.json({ 
-      error: 'Failed to process resume',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    console.error('API Route Error:', error)
+    return NextResponse.json(
+      { success: false, error: error instanceof Error ? error.message : 'Internal server error' },
+      { status: 500 }
+    )
   }
 }

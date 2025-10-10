@@ -83,11 +83,33 @@ export default function DashboardLayout({
       setScoreError(false)
       setResumeScore(0) // Reset score when fetching
       try {
-        const response = await apiFetch('http://localhost:5005/ats-score')
+        // Get the current Supabase session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        
+        if (sessionError || !session?.access_token) {
+          console.error('Session error or no token:', sessionError)
+          throw new Error('Authentication required')
+        }
+        
+        // Call our Next.js API proxy route
+        const response = await fetch('/api/ats-score', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+        })
+        
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || 'Failed to fetch ATS score')
+        }
+        
         const data = await response.json()
         console.log(data)
-        if (data.success && data.atsScore && data.atsScore.ats_score) {
-          setTargetScore(data.atsScore.ats_score)
+        // Backend now returns: { success: true, data: { ats_score: 70 } }
+        if (data.success && data.data && data.data.ats_score) {
+          setTargetScore(data.data.ats_score)
           setScoreError(false)
         } else {
           setScoreError(true)
@@ -157,11 +179,33 @@ export default function DashboardLayout({
     setScoreError(false)
     setResumeScore(0) // Reset score when retrying
     try {
-      const response = await apiFetch('http://localhost:5005/ats-score')
+      // Get the current Supabase session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      
+      if (sessionError || !session?.access_token) {
+        console.error('Session error or no token:', sessionError)
+        throw new Error('Authentication required')
+      }
+      
+      // Call our Next.js API proxy route
+      const response = await fetch('/api/ats-score', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to fetch ATS score')
+      }
+      
       const data = await response.json()
       console.log(data)
-      if (data.success && data.atsScore && data.atsScore.ats_score) {
-        setTargetScore(data.atsScore.ats_score)
+      // Backend now returns: { success: true, data: { ats_score: 70 } }
+      if (data.success && data.data && data.data.ats_score) {
+        setTargetScore(data.data.ats_score)
         setScoreError(false)
       } else {
         setScoreError(true)

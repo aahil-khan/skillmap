@@ -10,8 +10,9 @@ import { Badge } from "@/components/ui/badge"
 import { Mail, Lock, ArrowRight, User, LogIn, UserPlus } from "lucide-react"
 import Link from "next/link"
 import Navbar from "@/components/Navbar"
+import { PageErrorBoundary } from "@/components/GlobalErrorBoundary"
 
-export default function AuthPage() {
+function AuthPageContent() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [fullname, setFullname] = useState("")
@@ -261,5 +262,13 @@ export default function AuthPage() {
         </Card>
       </div>
     </div>
+  )
+}
+
+export default function AuthPage() {
+  return (
+    <PageErrorBoundary>
+      <AuthPageContent />
+    </PageErrorBoundary>
   )
 }

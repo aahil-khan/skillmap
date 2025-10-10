@@ -12,6 +12,7 @@ import { Menu, User, ArrowLeft, ArrowRight, Target } from "lucide-react"
 import Link from "next/link"
 import Navbar from "@/components/Navbar"
 import { apiFetch } from "@/lib/utils"
+import { PageErrorBoundary } from "@/components/GlobalErrorBoundary"
 
 const EXAMPLE_INTENTS = [
   "I want to learn Data Structures and Algorithms",
@@ -22,7 +23,7 @@ const EXAMPLE_INTENTS = [
   "I want to master DevOps and cloud technologies",
 ]
 
-export default function IntentPage() {
+function IntentPageContent() {
   useAuthRedirect()
   const router = useRouter()
   const [intent, setIntent] = useState("")
@@ -34,10 +35,20 @@ export default function IntentPage() {
     setIsLoading(true)
     
     try {
-      // Send intent to backend to convert to standalone question
-      const response = await fetch('http://localhost:5005/convert-to-standalone', {
+      // Get the Supabase session token
+      const { supabase } = await import('@/lib/supabase')
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      
+      if (sessionError || !session?.access_token) {
+        console.error('Session error or no token:', sessionError)
+        throw new Error('Authentication required')
+      }
+
+      // Send intent to our Next.js API proxy route to convert to standalone question
+      const response = await fetch('/api/convert-to-standalone', {
         method: 'POST',
         headers: {
+          'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ goal: intent.trim() }),
@@ -66,9 +77,10 @@ export default function IntentPage() {
 
       // Handle response if needed
       try {
-        const userResponse = await apiFetch('http://localhost:5005/user-profile', {
+        const userResponse = await fetch('/api/user-profile', {
           method: 'POST',
           headers: {
+            'Authorization': `Bearer ${session.access_token}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(updatedProfile),
@@ -205,5 +217,13 @@ export default function IntentPage() {
         </Card>
       </div>
     </div>
+  )
+}
+
+export default function IntentPage() {
+  return (
+    <PageErrorBoundary>
+      <IntentPageContent />
+    </PageErrorBoundary>
   )
 }

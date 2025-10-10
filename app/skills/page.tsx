@@ -8,9 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
-import { Menu, User, ArrowLeft, ArrowRight, CheckCircle, Plus, Trash2, X } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Menu, User, ArrowLeft, ArrowRight, CheckCircle, Plus, Trash2, X, AlertCircle } from "lucide-react"
 import Link from "next/link"
 import Navbar from "@/components/Navbar"
+import { api, APIErrorClass, isAuthError } from "@/lib/api-error-handler"
+import { PageErrorBoundary } from "@/components/GlobalErrorBoundary"
 
 interface Skill {
   name: string
@@ -27,12 +30,13 @@ interface CategorizedSkill {
   skills: Skill[]
 }
 
-export default function SkillsPage() {
+function SkillsPageContent() {
   useAuthRedirect()
   const router = useRouter()
   const [categorizedSkills, setCategorizedSkills] = useState<CategorizedSkill[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isLoaded, setIsLoaded] = useState(false)
+  const [error, setError] = useState<string>("")
   const [newSkillInputs, setNewSkillInputs] = useState<Record<string, string>>({}) // Track input values for each category
 
   useEffect(() => {
@@ -146,6 +150,12 @@ export default function SkillsPage() {
           className={`shadow-lg border-0 card-hover transition-all duration-1000 ${isLoaded ? "animate-scaleIn" : "opacity-0 scale-90"}`}
         >
           <CardHeader className="text-center">
+            {error && (
+              <Alert variant="destructive" className="mb-4 animate-slideInDown">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
             <div className="flex items-center justify-center space-x-2 mb-4">
               <CheckCircle className="h-8 w-8 text-green-600" />
               <Badge variant="secondary" className="bg-green-100 text-green-800">
@@ -276,5 +286,13 @@ export default function SkillsPage() {
         </Card>
       </div>
     </div>
+  )
+}
+
+export default function SkillsPage() {
+  return (
+    <PageErrorBoundary>
+      <SkillsPageContent />
+    </PageErrorBoundary>
   )
 }

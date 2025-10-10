@@ -4,16 +4,18 @@ import type React from "react"
 
 import { useState, useRef, useEffect } from "react"
 import { useAuthRedirect } from "@/hooks/useAuthRedirect"
-import { apiFetch } from "@/lib/utils"
-import { testAuth } from "@/lib/test-auth"
+import { api, APIErrorClass, isAuthError } from "@/lib/api-error-handler"
+import { getBackendUrl, BACKEND_ENDPOINTS } from "@/lib/config"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Menu, User, Upload, FileText, ArrowRight, ArrowLeft } from "lucide-react"
+import { ErrorAlert } from "@/components/ui/error-alert"
+import { Upload, FileText, ArrowRight, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import Navbar from "@/components/Navbar"
+import { PageErrorBoundary } from "@/components/GlobalErrorBoundary"
 
-export default function UploadPage() {
+function UploadPageContent() {
   useAuthRedirect()
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -21,6 +23,7 @@ export default function UploadPage() {
   const [isUploading, setIsUploading] = useState(false)
   const [isLoaded, setIsLoaded] = useState(false)
   const [dragActive, setDragActive] = useState(false)
+  const [error, setError] = useState<string>("")
 
   useEffect(() => {
     setIsLoaded(true)
@@ -58,42 +61,18 @@ export default function UploadPage() {
     if (!file) return
 
     setIsUploading(true)
+    setError("")
 
     try {
-      // Debug: Check if JWT token exists
-      const token = localStorage.getItem('sb-jwt')
-      console.log('JWT token for upload:', token ? 'exists' : 'missing')
-      console.log('Token preview:', token ? token.substring(0, 20) + '...' : 'no token')
-
       // Create FormData to send the file
       const formData = new FormData()
       formData.append('resume', file)
 
-      // Send file to backend server for processing
-      const response = await apiFetch('http://localhost:5005/upload-resume', {
-        method: 'POST',
-        body: formData,
-      })
+      // Use the new API client with automatic auth token injection
+      const data = await api.upload(getBackendUrl(BACKEND_ENDPOINTS.UPLOAD_RESUME), formData)
 
-      console.log('Upload response status:', response.status)
-      console.log('Upload response ok:', response.ok)
-
-      if (!response.ok) {
-        // Try to get the error message from the response
-        let errorMessage = 'Failed to process resume'
-        try {
-          const errorData = await response.json()
-          console.log('Error response:', errorData)
-          errorMessage = errorData.error || errorData.message || errorMessage
-        } catch (e) {
-          console.log('Could not parse error response as JSON')
-        }
-        throw new Error(`${errorMessage} (Status: ${response.status})`)
-      }
-
-      const data = await response.json()
-
-      localStorage.setItem("profile-data", JSON.stringify(data.profile))
+      // Store profile data
+      localStorage.setItem("profile-data", JSON.stringify(data.profile || data))
 
       console.log('Profile data received:', data)
 
@@ -121,36 +100,27 @@ export default function UploadPage() {
       localStorage.setItem("extracted-skills", JSON.stringify(extractedSkills))
       router.push("/skills")
       
-    } catch (error) {
-      console.error('Error uploading resume:', error)
+    } catch (err) {
+      console.error('Error uploading resume:', err)
       
-      // Fallback to mock data if API fails
-      const mockSkills = [
-        {
-          category: "Web Development",
-          skills: ["HTML", "CSS", "JavaScript", "React", "Node.js", "Express.js"]
-        },
-        {
-          category: "Database Systems", 
-          skills: ["PostgreSQL", "MongoDB", "Redis"]
-        },
-        {
-          category: "Programming Languages",
-          skills: ["Python", "TypeScript", "Java"]
+      if (err instanceof APIErrorClass) {
+        // Handle authentication errors
+        if (isAuthError(err)) {
+          setError('Your session has expired. Please log in again.')
+          setTimeout(() => router.push('/auth'), 2000)
+          return
         }
-      ]
-      
-      const mockProfile = {
-        name: "Demo User",
-        email: "demo@example.com",
-        profile: {
-          technical_skills: mockSkills
+        
+        // Display user-friendly error message
+        setError(err.getUserMessage())
+        
+        // Log request ID for debugging
+        if (err.requestId) {
+          console.error('Request ID for debugging:', err.requestId)
         }
+      } else {
+        setError('An unexpected error occurred. Please try again.')
       }
-      
-      localStorage.setItem("extracted-skills", JSON.stringify(mockSkills))
-      localStorage.setItem("profile-data", JSON.stringify(mockProfile))
-      router.push("/skills")
     } finally {
       setIsUploading(false)
     }
@@ -172,6 +142,15 @@ export default function UploadPage() {
           </CardHeader>
           <CardContent className="space-y-8 animate-fadeInUp animate-delay-300">
             
+            {/* Error Alert */}
+            {error && (
+              <ErrorAlert
+                error={error}
+                onDismiss={() => setError("")}
+                onRetry={file ? handleUpload : undefined}
+              />
+            )}
+
             {/* Upload Area */}
             <div
               className={`border-2 border-dashed rounded-lg p-12 text-center transition-all duration-300 cursor-pointer hover-lift ${
@@ -255,5 +234,13 @@ export default function UploadPage() {
         </Card>
       </div>
     </div>
+  )
+}
+
+export default function UploadPage() {
+  return (
+    <PageErrorBoundary>
+      <UploadPageContent />
+    </PageErrorBoundary>
   )
 }

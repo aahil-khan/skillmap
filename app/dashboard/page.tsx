@@ -10,8 +10,8 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
 import { Target, Award, Clock, ArrowRight, Briefcase, BookOpen, Code, Settings, TrendingUp } from "lucide-react"
 import Link from "next/link"
 import { ChartContainer } from "@/components/ui/chart"
-import { apiFetch } from "@/lib/utils"
-import { supabase } from "@/lib/supabase"
+import { api, APIErrorClass, isAuthError } from "@/lib/api-error-handler"
+import { PageErrorBoundary } from "@/components/GlobalErrorBoundary"
 
 interface SkillCategory {
   name: string
@@ -36,7 +36,7 @@ interface RecommendedRole {
 
 const COLORS = ["#8b1538", "#2f5f5f", "#4a90e2", "#f39c12", "#27ae60", "#9b59b6"]
 
-export default function DashboardOverviewPage() {
+function DashboardOverviewPageContent() {
   const [resumeScore, setResumeScore] = useState<number>(0)
   const [analysisData, setAnalysisData] = useState<any>(null)
   const [targetScore, setTargetScore] = useState<number | null>(null)
@@ -59,52 +59,14 @@ export default function DashboardOverviewPage() {
       try {
         console.log('🔄 Starting ATS score fetch...')
         
-        // Get the current Supabase session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        // Call Next.js API proxy route using our api client
+        const data = await api.get('/api/ats-score')
         
-        console.log('🔐 Session check:', {
-          hasSession: !!session,
-          hasUser: !!session?.user,
-          hasAccessToken: !!session?.access_token,
-          tokenLength: session?.access_token?.length || 0
-        })
-        
-        if (sessionError) {
-          console.error('❌ Session error:', sessionError)
-          throw new Error('Authentication session error')
-        }
-        
-        if (!session?.access_token) {
-          console.error('❌ No access token in session')
-          throw new Error('No authentication token available')
-        }
-        
-        // Use the session token directly for the API call
-        const response = await fetch('http://localhost:5005/ats-score', {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-        })
-        
-        console.log('📡 API Response:', {
-          status: response.status,
-          statusText: response.statusText,
-          headers: Object.fromEntries(response.headers.entries())
-        })
-        
-        if (!response.ok) {
-          const errorText = await response.text()
-          console.error('❌ API Error Response:', errorText)
-          throw new Error(`API request failed: ${response.status} ${response.statusText}`)
-        }
-        
-        const data = await response.json()
         console.log('✅ ATS Score data received:', data)
         
-        if (data.success && data.atsScore && data.atsScore.ats_score) {
-          setTargetScore(data.atsScore.ats_score)
+        // After handleAPIResponse, data is already unwrapped: { ats_score: 70 }
+        if (data && data.ats_score) {
+          setTargetScore(data.ats_score)
           setScoreError(false)
         } else {
           console.error('Invalid API response structure:', data)
@@ -112,7 +74,14 @@ export default function DashboardOverviewPage() {
           setTargetScore(null)
         }
       } catch (error) {
-        console.error('❌ Failed to fetch ATS score:', error)
+        if (error instanceof APIErrorClass) {
+          console.error('❌ API Error:', error.getUserMessage())
+          if (error.requestId) {
+            console.error('Request ID:', error.requestId)
+          }
+        } else {
+          console.error('❌ Failed to fetch ATS score:', error)
+        }
         setScoreError(true)
         setTargetScore(null)
       } finally {
@@ -227,23 +196,17 @@ export default function DashboardOverviewPage() {
     setScoreError(false)
     setResumeScore(0)
     
-    // Check if we have a token
-    const token = localStorage.getItem('sb-jwt')
-    console.log('Retry - Token exists:', !!token)
-    
     try {
-      const response = await apiFetch('http://localhost:5005/ats-score')
-      console.log('Retry - API Response status:', response.status)
+      console.log('🔄 Retrying ATS score fetch...')
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
+      // Call Next.js API proxy route using our api client
+      const data = await api.get('/api/ats-score')
       
-      const data = await response.json()
       console.log('Retry - API Response data:', data)
       
-      if (data.success && data.atsScore && data.atsScore.ats_score) {
-        setTargetScore(data.atsScore.ats_score)
+      // After handleAPIResponse, data is already unwrapped: { ats_score: 70 }
+      if (data && data.ats_score) {
+        setTargetScore(data.ats_score)
         setScoreError(false)
       } else {
         console.error('Retry - Invalid API response structure:', data)
@@ -251,7 +214,14 @@ export default function DashboardOverviewPage() {
         setTargetScore(null)
       }
     } catch (error) {
-      console.error('Retry - Failed to fetch ATS score:', error)
+      if (error instanceof APIErrorClass) {
+        console.error('Retry - API Error:', error.getUserMessage())
+        if (error.requestId) {
+          console.error('Request ID:', error.requestId)
+        }
+      } else {
+        console.error('Retry - Failed to fetch ATS score:', error)
+      }
       setScoreError(true)
       setTargetScore(null)
     } finally {
@@ -610,5 +580,13 @@ export default function DashboardOverviewPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function DashboardOverviewPage() {
+  return (
+    <PageErrorBoundary>
+      <DashboardOverviewPageContent />
+    </PageErrorBoundary>
   )
 }

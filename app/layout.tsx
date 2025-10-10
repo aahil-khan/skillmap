@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { GlobalErrorBoundaryProvider } from '@/components/GlobalErrorBoundary'
 
 export const metadata: Metadata = {
   title: 'SkillMap',
@@ -13,7 +14,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Favicon - replace with your file in /public if needed */}
         <link rel="icon" href="/placeholder-logo.png" />
       </head>
-      <body>{children}</body>
+      <body>
+        <GlobalErrorBoundaryProvider>
+          {children}
+        </GlobalErrorBoundaryProvider>
+      </body>
     </html>
   )
 }
