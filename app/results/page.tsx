@@ -11,6 +11,7 @@ import { Brain, CheckCircle, AlertTriangle, TrendingUp, ArrowLeft, ArrowRight, M
 import { api, APIErrorClass, isAuthError } from "@/lib/api-error-handler"
 import { getBackendUrl, BACKEND_ENDPOINTS } from "@/lib/config"
 import Link from "next/link"
+import { PageErrorBoundary } from "@/components/GlobalErrorBoundary"
 
 interface SkillItem {
   name: string
@@ -43,7 +44,7 @@ interface AnalysisResult {
   user_goal: string
 }
 
-export default function ResultsPage() {
+function ResultsPageContent() {
   const router = useRouter()
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -352,5 +353,13 @@ export default function ResultsPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function ResultsPage() {
+  return (
+    <PageErrorBoundary>
+      <ResultsPageContent />
+    </PageErrorBoundary>
   )
 }

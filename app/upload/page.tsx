@@ -13,8 +13,9 @@ import { ErrorAlert } from "@/components/ui/error-alert"
 import { Upload, FileText, ArrowRight, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import Navbar from "@/components/Navbar"
+import { PageErrorBoundary } from "@/components/GlobalErrorBoundary"
 
-export default function UploadPage() {
+function UploadPageContent() {
   useAuthRedirect()
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -233,5 +234,13 @@ export default function UploadPage() {
         </Card>
       </div>
     </div>
+  )
+}
+
+export default function UploadPage() {
+  return (
+    <PageErrorBoundary>
+      <UploadPageContent />
+    </PageErrorBoundary>
   )
 }

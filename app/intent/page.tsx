@@ -12,6 +12,7 @@ import { Menu, User, ArrowLeft, ArrowRight, Target } from "lucide-react"
 import Link from "next/link"
 import Navbar from "@/components/Navbar"
 import { apiFetch } from "@/lib/utils"
+import { PageErrorBoundary } from "@/components/GlobalErrorBoundary"
 
 const EXAMPLE_INTENTS = [
   "I want to learn Data Structures and Algorithms",
@@ -22,7 +23,7 @@ const EXAMPLE_INTENTS = [
   "I want to master DevOps and cloud technologies",
 ]
 
-export default function IntentPage() {
+function IntentPageContent() {
   useAuthRedirect()
   const router = useRouter()
   const [intent, setIntent] = useState("")
@@ -216,5 +217,13 @@ export default function IntentPage() {
         </Card>
       </div>
     </div>
+  )
+}
+
+export default function IntentPage() {
+  return (
+    <PageErrorBoundary>
+      <IntentPageContent />
+    </PageErrorBoundary>
   )
 }

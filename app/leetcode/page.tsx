@@ -51,6 +51,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { api, APIErrorClass, isAuthError } from "@/lib/api-error-handler"
+import { PageErrorBoundary } from "@/components/GlobalErrorBoundary"
 
 interface LeetCodeProfile {
   username: string
@@ -136,7 +137,7 @@ const calculateTopPercentile = (ranking: number, totalUsers: number = 20000000):
   return Math.round(percentile * 10) / 10;
 };
 
-export default function LeetCodePage() {
+function LeetCodePageContent() {
   // Custom tooltip state
   const [tooltip, setTooltip] = useState<{
     visible: boolean;
@@ -1566,5 +1567,13 @@ export default function LeetCodePage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function LeetCodePage() {
+  return (
+    <PageErrorBoundary>
+      <LeetCodePageContent />
+    </PageErrorBoundary>
   )
 }

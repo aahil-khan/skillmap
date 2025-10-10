@@ -13,6 +13,7 @@ import { Menu, User, ArrowLeft, ArrowRight, CheckCircle, Plus, Trash2, X, AlertC
 import Link from "next/link"
 import Navbar from "@/components/Navbar"
 import { api, APIErrorClass, isAuthError } from "@/lib/api-error-handler"
+import { PageErrorBoundary } from "@/components/GlobalErrorBoundary"
 
 interface Skill {
   name: string
@@ -29,7 +30,7 @@ interface CategorizedSkill {
   skills: Skill[]
 }
 
-export default function SkillsPage() {
+function SkillsPageContent() {
   useAuthRedirect()
   const router = useRouter()
   const [categorizedSkills, setCategorizedSkills] = useState<CategorizedSkill[]>([])
@@ -285,5 +286,13 @@ export default function SkillsPage() {
         </Card>
       </div>
     </div>
+  )
+}
+
+export default function SkillsPage() {
+  return (
+    <PageErrorBoundary>
+      <SkillsPageContent />
+    </PageErrorBoundary>
   )
 }

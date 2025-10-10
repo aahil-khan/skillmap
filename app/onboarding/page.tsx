@@ -15,6 +15,7 @@ import { ErrorAlert } from "@/components/ui/error-alert"
 import { ValidationErrors, useValidationErrors } from "@/components/ui/validation-errors"
 import { ArrowLeft, ArrowRight, Menu, User } from "lucide-react"
 import Link from "next/link"
+import { PageErrorBoundary } from "@/components/GlobalErrorBoundary"
 
 const SKILL_OPTIONS = [
   // Web Development
@@ -75,7 +76,7 @@ interface UserSkill {
   level: "beginner" | "intermediate" | "advanced"
 }
 
-export default function OnboardingPage() {
+function OnboardingPageContent() {
   const router = useRouter()
   const [step, setStep] = useState(1)
   const [skills, setSkills] = useState<UserSkill[]>([])
@@ -383,5 +384,13 @@ export default function OnboardingPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function OnboardingPage() {
+  return (
+    <PageErrorBoundary>
+      <OnboardingPageContent />
+    </PageErrorBoundary>
   )
 }

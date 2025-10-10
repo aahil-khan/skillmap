@@ -11,6 +11,7 @@ import { Target, Award, Clock, ArrowRight, Briefcase, BookOpen, Code, Settings, 
 import Link from "next/link"
 import { ChartContainer } from "@/components/ui/chart"
 import { api, APIErrorClass, isAuthError } from "@/lib/api-error-handler"
+import { PageErrorBoundary } from "@/components/GlobalErrorBoundary"
 
 interface SkillCategory {
   name: string
@@ -35,7 +36,7 @@ interface RecommendedRole {
 
 const COLORS = ["#8b1538", "#2f5f5f", "#4a90e2", "#f39c12", "#27ae60", "#9b59b6"]
 
-export default function DashboardOverviewPage() {
+function DashboardOverviewPageContent() {
   const [resumeScore, setResumeScore] = useState<number>(0)
   const [analysisData, setAnalysisData] = useState<any>(null)
   const [targetScore, setTargetScore] = useState<number | null>(null)
@@ -579,5 +580,13 @@ export default function DashboardOverviewPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function DashboardOverviewPage() {
+  return (
+    <PageErrorBoundary>
+      <DashboardOverviewPageContent />
+    </PageErrorBoundary>
   )
 }
