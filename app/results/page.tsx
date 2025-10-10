@@ -69,8 +69,8 @@ function ResultsPageContent() {
         return
       }
 
-      // Use new API client to fetch skill gap analysis (POST request with no body)
-      const data: AnalysisResult = await api.post(getBackendUrl(BACKEND_ENDPOINTS.ANALYZE_SKILL_GAPS), {})
+      // Use Next.js API proxy route to avoid CORS issues
+      const data: AnalysisResult = await api.post('/api/analyze-skill-gaps', {})
       
       setAnalysis(data)
       

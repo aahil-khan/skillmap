@@ -1,9 +1,11 @@
 /**
  * API utility functions for fetching user data from backend
  * Replaces localStorage with database-backed API calls
+ * Uses Next.js API routes as proxy to avoid CORS issues
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5005';
+// Use Next.js API routes (proxy) instead of direct backend calls
+const API_BASE_URL = '/api';
 
 /**
  * Get authentication token from localStorage
@@ -14,7 +16,7 @@ function getAuthToken(): string | null {
 }
 
 /**
- * Make authenticated API request
+ * Make authenticated API request through Next.js API proxy
  */
 async function apiRequest<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const token = getAuthToken();
@@ -23,6 +25,7 @@ async function apiRequest<T>(endpoint: string, options?: RequestInit): Promise<T
     throw new Error('No authentication token found. Please log in.');
   }
 
+  // Use Next.js API routes (already includes /api prefix)
   const url = `${API_BASE_URL}${endpoint}`;
   
   const response = await fetch(url, {
