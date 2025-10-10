@@ -211,6 +211,118 @@ function ResultsPageContent() {
           <p className="text-gray-600">Goal: {analysis.user_goal}</p>
         </div>
 
+        {/* Navigation Bar at Top */}
+        <div className="flex justify-center space-x-4 mb-8 animate-fadeInUp animate-delay-1000">
+          <Button
+            variant="outline"
+            asChild
+            className="hover:bg-[#8b1538] hover:text-white transition-colors"
+          >
+            <Link href="/intent">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Change Goal
+            </Link>
+          </Button>
+          <Button
+            onClick={() => {
+              const report = document.getElementById("skillmap-report");
+              if (!report) return;
+              const printWindow = window.open("", "_blank");
+              if (!printWindow) return;
+              printWindow.document.write(`
+                <html>
+                  <head>
+                    <title>SkillMap Report</title>
+                    <style>
+                      body { font-family: 'Segoe UI', Arial, sans-serif; padding: 2rem; background: #f9f9f9; color: #222; }
+                      h1 { font-size: 2rem; margin-bottom: 1.5rem; color: #2f5f5f; }
+                      h2 { font-size: 1.3rem; margin-top: 2rem; margin-bottom: 1rem; color: #333; border-bottom: 1px solid #e0e0e0; padding-bottom: 0.3rem; }
+                      h3 { font-size: 1.1rem; margin-bottom: 0.5rem; color: #444; }
+                      ul, ol { margin: 0.5rem 0 1rem 1.5rem; }
+                      ul li, ol li { margin-bottom: 0.3rem; }
+                      .section { margin-bottom: 2rem; }
+                      .skills-columns { display: flex; gap: 2rem; }
+                      .skills-columns > div { flex: 1; background: #fff; border-radius: 8px; box-shadow: 0 1px 4px #e0e0e0; padding: 1rem; }
+                      .skills-columns h3 { margin-bottom: 0.5rem; }
+                      .recommendations { background: #fff; border-radius: 8px; box-shadow: 0 1px 4px #e0e0e0; padding: 1rem; }
+                      strong { color: #2f5f5f; }
+                    </style>
+                  </head>
+                  <body>
+                    ${report.innerHTML}
+                    <script>
+                      window.onload = function() { window.print(); };
+                    </script>
+                  </body>
+                </html>
+              `);
+              printWindow.document.close();
+              printWindow.focus();
+            }}
+            variant="outline"
+          >
+            Save Report
+          </Button>
+        {/* Hidden Structured Report for Printing */}
+        <div id="skillmap-report" style={{ display: "none" }}>
+          <h1>SkillMap Report</h1>
+          <div className="section">
+            <strong>Name:</strong> {analysis.user}
+          </div>
+          <div className="section">
+            <strong>Goal:</strong> {analysis.user_goal}
+          </div>
+          {analysis.analysis.map((categoryAnalysis, idx) => (
+            <div key={idx} className="section">
+              <h2>{categoryAnalysis.detected_category} Analysis</h2>
+              <div className="skills-columns">
+                <div>
+                  <h3>Strong Skills</h3>
+                  <ul>
+                    {categoryAnalysis.skills.present.length === 0 && <li>None</li>}
+                    {categoryAnalysis.skills.present.map((skill, i) => (
+                      <li key={i}>{skill.name}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <h3>Needs Improvement</h3>
+                  <ul>
+                    {categoryAnalysis.skills.needs_improvement.length === 0 && <li>None</li>}
+                    {categoryAnalysis.skills.needs_improvement.map((skill, i) => (
+                      <li key={i}>{skill.name}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <h3>Missing Skills</h3>
+                  <ul>
+                    {categoryAnalysis.skills.gaps.length === 0 && <li>None</li>}
+                    {categoryAnalysis.skills.gaps.map((skill, i) => (
+                      <li key={i}>{skill.name}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          ))}
+          <div className="section recommendations">
+            <h2>Learning Recommendations</h2>
+            <div dangerouslySetInnerHTML={{ __html: analysis.summary }} />
+          </div>
+        </div>
+          <Button
+            variant="outline"
+            asChild
+            className="hover:bg-[#2f5f5f] hover:text-white transition-colors"
+          >
+            <Link href="/dashboard">
+              <ArrowRight className="mr-2 h-4 w-4" />
+              Go to Dashboard
+            </Link>
+          </Button>
+        </div>
+
         {/* Analysis Overview */}
         {analysis.analysis.map((categoryAnalysis, index) => (
           <div key={index} className="mb-8">
@@ -328,25 +440,6 @@ function ResultsPageContent() {
             />
           </CardContent>
         </Card>
-
-        {/* Action Buttons */}
-        <div className="flex justify-center space-x-4 mt-8 animate-fadeInUp animate-delay-1000">
-          <Button variant="outline" asChild>
-            <Link href="/intent">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Change Goal
-            </Link>
-          </Button>
-          <Button asChild className="skillmap-button text-white">
-            <Link href="/dashboard">
-              <ArrowRight className="mr-2 h-4 w-4" />
-              Go to Dashboard
-            </Link>
-          </Button>
-          <Button onClick={() => window.print()} variant="outline">
-            Save Report
-          </Button>
-        </div>
       </div>
     </div>
   )
