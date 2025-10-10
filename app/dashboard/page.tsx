@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
-import { Target, Award, Clock, ArrowRight, Briefcase, BookOpen, Code, Settings, TrendingUp } from "lucide-react"
+import { Award, Clock, ArrowRight, Briefcase, BookOpen, Code, Settings, TrendingUp } from "lucide-react"
 import Link from "next/link"
 import { ChartContainer } from "@/components/ui/chart"
 import { api, APIErrorClass, isAuthError } from "@/lib/api-error-handler"
@@ -26,13 +26,6 @@ interface WorkExperience {
   duration: string
   description: string
   skills: string[]
-}
-
-interface RecommendedRole {
-  title: string
-  match: number
-  description: string
-  missingSkills: string[]
 }
 
 const COLORS = ["#8b1538", "#2f5f5f", "#4a90e2", "#f39c12", "#27ae60", "#9b59b6"]
@@ -202,27 +195,6 @@ function DashboardOverviewPageContent() {
         skills: ["HTML", "CSS", "JavaScript", "React Native"],
       },
     ]
-
-  const recommendedRoles: RecommendedRole[] = [
-    {
-      title: "Frontend Developer",
-      match: 92,
-      description: "Perfect match for your React and JavaScript skills",
-      missingSkills: ["Vue.js", "Angular"],
-    },
-    {
-      title: "Full Stack Developer",
-      match: 87,
-      description: "Your backend and frontend experience aligns well",
-      missingSkills: ["Docker", "Kubernetes"],
-    },
-    {
-      title: "React Developer",
-      match: 95,
-      description: "Excellent match for specialized React development",
-      missingSkills: ["Next.js", "Redux Toolkit"],
-    },
-  ]
 
   const recommendations = [
     {
@@ -450,48 +422,6 @@ function DashboardOverviewPageContent() {
                     ))}
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Role Matching */}
-          <Card className="shadow-lg border-0 rounded-2xl card-hover animate-slideInLeft animate-delay-200">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Target className="h-6 w-6 text-green-600" />
-                <span>Role Matching</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {recommendedRoles.map((role, index) => (
-                  <div
-                    key={role.title}
-                    className={`p-4 border rounded-lg hover:bg-gray-50 transition-all duration-300 animate-slideInRight animate-delay-${index * 100}`}
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h3 className="font-semibold text-gray-900">{role.title}</h3>
-                        <p className="text-sm text-gray-600">{role.description}</p>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-bold text-green-600">{role.match}%</div>
-                        <div className="text-xs text-gray-500">Match</div>
-                      </div>
-                    </div>
-                    <Progress value={role.match} className="mb-2 h-2" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-700 mb-1">Missing Skills:</p>
-                      <div className="flex flex-wrap gap-1">
-                        {role.missingSkills.map((skill) => (
-                          <Badge key={skill} variant="outline" className="text-xs bg-red-50 text-red-700">
-                            {skill}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ))}
               </div>
             </CardContent>
           </Card>
