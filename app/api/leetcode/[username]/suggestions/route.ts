@@ -7,6 +7,8 @@ export async function GET(
   try {
     const { username } = params
     
+    console.log(`[PROXY] Fetching suggestions for ${username}`)
+    
     // This is a public API, no authentication required
     const backendResponse = await fetch(`http://localhost:5005/api/leetcode/${username}/suggestions`, {
       method: 'GET',
@@ -17,7 +19,7 @@ export async function GET(
     
     if (!backendResponse.ok) {
       const errorText = await backendResponse.text()
-      console.error('Backend error:', errorText)
+      console.error('[PROXY] Backend error:', errorText)
       
       let errorData
       try {
@@ -27,18 +29,21 @@ export async function GET(
       }
       
       return NextResponse.json(
-        { success: false, error: errorData.error || 'Failed to fetch suggestions' },
+        { recommended_problems: [], error: errorData.error || 'Failed to fetch suggestions' },
         { status: backendResponse.status }
       )
     }
     
     const data = await backendResponse.json()
+    console.log('[PROXY] Successfully fetched suggestions:', data)
+    
+    // Return the data directly (it already has recommended_problems)
     return NextResponse.json(data)
     
   } catch (error) {
-    console.error('API Route Error:', error)
+    console.error('[PROXY] API Route Error:', error)
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : 'Internal server error' },
+      { recommended_problems: [], error: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }
     )
   }

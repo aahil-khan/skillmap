@@ -425,14 +425,26 @@ function LeetCodePageContent() {
       
       // Fetch recommended problems from backend
       try {
+        setIsLoadingRecommendations(true);
+        console.log('[FRONTEND] Fetching recommendations for', username);
+        
         const recommendationsData = await api.get(`/api/leetcode/${username}/suggestions`)
         
-        if (recommendationsData.recommended_problems) {
+        console.log('[FRONTEND] Recommendations response:', recommendationsData);
+        
+        if (recommendationsData.recommended_problems && Array.isArray(recommendationsData.recommended_problems)) {
           setRecommendedProblems(recommendationsData.recommended_problems);
+          console.log('[FRONTEND] Set recommendations:', recommendationsData.recommended_problems.length, 'problems');
+        } else {
+          console.warn('[FRONTEND] No recommended_problems in response:', recommendationsData);
+          setRecommendedProblems([]);
         }
       } catch (recommendationError) {
-        console.error('Error fetching recommendations:', recommendationError);
+        console.error('[FRONTEND] Error fetching recommendations:', recommendationError);
         // Keep empty array if recommendations fetch fails
+        setRecommendedProblems([]);
+      } finally {
+        setIsLoadingRecommendations(false);
       }
       
       localStorage.setItem("leetcode-connected", "true");
@@ -460,6 +472,7 @@ function LeetCodePageContent() {
   const router = useRouter()
   const [isConnected, setIsConnected] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false)
   const [username, setUsername] = useState("")
   const [profile, setProfile] = useState<LeetCodeProfile | null>(null)
   const [showUserMenu, setShowUserMenu] = useState(false)
@@ -1074,7 +1087,13 @@ function LeetCodePageContent() {
                   </CardHeader>
                   <CardContent className="pt-0">
                     <div className="space-y-2">
-                      {recommendedProblems.length > 0 ? (
+                      {isLoadingRecommendations ? (
+                        <div className="text-center py-8 text-gray-500">
+                          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2 text-blue-500" />
+                          <p className="text-sm font-medium">Analyzing your progress...</p>
+                          <p className="text-xs">Getting personalized recommendations</p>
+                        </div>
+                      ) : recommendedProblems.length > 0 ? (
                         recommendedProblems.map((problem, index) => (
                           <div key={index} className="flex items-center justify-between p-3 border rounded-lg bg-gradient-to-r from-blue-50 to-purple-50">
                             <div>
@@ -1103,7 +1122,7 @@ function LeetCodePageContent() {
                       ) : (
                         <div className="text-center py-4 text-gray-500">
                           <p className="text-sm">No recommendations available yet.</p>
-                          <p className="text-xs">Connect your LeetCode account to get personalized suggestions.</p>
+                          <p className="text-xs">Solve a few problems to get personalized suggestions.</p>
                         </div>
                       )}
                     </div>
