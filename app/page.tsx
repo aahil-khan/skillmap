@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Menu, User, Upload, Users, Target, ArrowRight, X } from "lucide-react"
+import { Menu, User, Upload, Users, Target, ArrowRight, X, BookOpen } from "lucide-react"
 import Navbar from "@/components/Navbar"
 
 export default function HomePage() {
@@ -18,7 +18,7 @@ export default function HomePage() {
   }, [])
 
   const handleTrySkillMap = async () => {
-    // Check if user is authenticated using Supabase
+    // Check if user is authenticated using Supabase  
     const { data: { session } } = await supabase.auth.getSession()
     if (session?.user) {
       // User is authenticated, check if they have profile data
@@ -68,39 +68,49 @@ export default function HomePage() {
       <section id="features" className="py-20 px-4 bg-white">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16 animate-fadeInUp">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Why Choose SkillMap?</h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Core Features That Power SkillMap</h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
               Our AI-powered platform provides personalized learning paths based on your current skills and goals.
-            </p>
+            </p> 
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 card-hover animate-slideInLeft">
-              <CardContent className="p-8 text-center">
-                <Target className="h-12 w-12 text-blue-600 mx-auto mb-4 hover:scale-110 transition-transform duration-300" />
-                <h3 className="text-xl font-semibold mb-3">Personalized Analysis</h3>
-                <p className="text-gray-600">
-                  AI-powered skill gap detection based on your current abilities and learning goals.
+              <CardContent className="p-6 text-center">
+                <Target className="h-10 w-10 text-blue-600 mx-auto mb-3 hover:scale-110 transition-transform duration-300" />
+                <h3 className="text-lg font-semibold mb-2">AI-Powered Skill Analysis</h3>
+                <p className="text-sm text-gray-600">
+                  Analyze resumes and code to automatically detect strengths and skill gaps using AI models.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 card-hover animate-slideInLeft animate-delay-100">
+              <CardContent className="p-6 text-center">
+                <BookOpen className="h-10 w-10 text-green-600 mx-auto mb-3 hover:scale-110 transition-transform duration-300" />
+                <h3 className="text-lg font-semibold mb-2">Personalized Learning Roadmaps</h3>
+                <p className="text-sm text-gray-600">
+                  Receive step-by-step, goal-oriented roadmaps personalized to your current level and targets.
                 </p>
               </CardContent>
             </Card>
 
             <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 card-hover animate-slideInLeft animate-delay-200">
-              <CardContent className="p-8 text-center">
-                <Upload className="h-12 w-12 text-green-600 mx-auto mb-4 hover:scale-110 transition-transform duration-300" />
-                <h3 className="text-xl font-semibold mb-3">Smart Recommendations</h3>
-                <p className="text-gray-600">
-                  Get actionable learning suggestions and project ideas tailored to your skill level.
+              <CardContent className="p-6 text-center">
+                <Upload className="h-10 w-10 text-orange-600 mx-auto mb-3 hover:scale-110 transition-transform duration-300" />
+                <h3 className="text-lg font-semibold mb-2">Smart Recommendations</h3>
+                <p className="text-sm text-gray-600">
+                  Get curated courses, projects, and practice problems recommended based on your progress.
                 </p>
               </CardContent>
             </Card>
 
-            <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 card-hover animate-slideInLeft animate-delay-400">
-              <CardContent className="p-8 text-center">
-                <Users className="h-12 w-12 text-purple-600 mx-auto mb-4 hover:scale-110 transition-transform duration-300" />
-                <h3 className="text-xl font-semibold mb-3">Built for Learners</h3>
-                <p className="text-gray-600">
-                  Designed specifically for students, bootcamp learners, and self-taught developers.
+            <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 card-hover animate-slideInLeft animate-delay-300">
+              <CardContent className="p-6 text-center">
+                <Users className="h-10 w-10 text-purple-600 mx-auto mb-3 hover:scale-110 transition-transform duration-300" />
+                <h3 className="text-lg font-semibold mb-2">Peer & Mentor Matching</h3>
+                <p className="text-sm text-gray-600">
+                  Find study partners, project collaborators, and mentors matched to your goals and schedule.
                 </p>
               </CardContent>
             </Card>

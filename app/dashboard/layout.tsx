@@ -1,14 +1,14 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
-import { Menu, User, Download, Calendar, Mail, Target, Award, Clock, ArrowRight, Briefcase, BookOpen, Code, Settings, MapPin, CheckCircle2, Circle, Play, Star, ExternalLink, Users} from "lucide-react"
+import { Menu, User, Calendar, Mail, Target, Award, Clock, ArrowRight, Briefcase, BookOpen, Code, Settings, MapPin, CheckCircle2, Circle, Play, Star, ExternalLink, Users, ArrowLeft} from "lucide-react"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -29,6 +29,7 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const router = useRouter()
+  const pathname = usePathname()
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [resumeScore, setResumeScore] = useState<number>(0)
@@ -38,6 +39,9 @@ export default function DashboardLayout({
   const [targetScore, setTargetScore] = useState<number | null>(null)
   const [scoreError, setScoreError] = useState<boolean>(false)
   const [isFetchingScore, setIsFetchingScore] = useState<boolean>(false)
+
+  // Check if we're on a sub-page
+  const isOnSubPage = pathname !== "/dashboard" && (pathname === "/dashboard/learning-roadmap" || pathname === "/dashboard/peer-matching")
 
   useEffect(() => {
     let intervalId: NodeJS.Timeout | null = null
@@ -220,11 +224,6 @@ export default function DashboardLayout({
     }
   }
 
-  const exportToPDF = () => {
-    // Mock PDF export
-    alert("PDF export functionality would be implemented here!")
-  }
-
   if (isLoading) {
     return (
       <div className="min-h-screen skillmap-bg flex items-center justify-center">
@@ -286,10 +285,6 @@ export default function DashboardLayout({
                 <Code className="mr-2 h-4 w-4 text-orange-600" />
                 LeetCode Analysis
               </Link>
-            </Button>
-            <Button onClick={exportToPDF} className="skillmap-button text-white hover-lift">
-              <Download className="mr-2 h-4 w-4" />
-              Export PDF
             </Button>
           </div>
         </div>
@@ -429,25 +424,50 @@ export default function DashboardLayout({
         {/* Navigation Tabs */}
         <div className="mb-6">
           <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8">
-                <Button asChild variant="ghost" className="py-2 px-4 rounded-lg hover:bg-blue-50 transition-colors">
-                <Link 
-                  href="/dashboard/learning-roadmap"
-                  className="flex items-center space-x-2"
+            <nav className="-mb-px flex space-x-8 items-center">
+              {/* Back to Dashboard Button - slides in from left */}
+              <div 
+                className={`transition-all duration-500 ease-in-out overflow-hidden ${
+                  isOnSubPage 
+                    ? 'opacity-100 max-w-xs translate-x-0' 
+                    : 'opacity-0 max-w-0 -translate-x-full'
+                }`}
+              >
+                <Button 
+                  onClick={() => router.push("/dashboard")}
+                  variant="ghost"
+                  className="py-2 px-4 rounded-lg hover:bg-purple-50 transition-colors flex items-center space-x-2 whitespace-nowrap"
                 >
-                  <BookOpen className="h-4 w-4" />
-                  <span>Learning Roadmap</span>
-                </Link>
+                  <ArrowLeft className="h-4 w-4" />
+                  <span>Back to Dashboard</span>
+                </Button>
+              </div>
+
+              {/* Learning Roadmap and Peer Matching - slide right when sub-page is active */}
+              <div 
+                className={`flex space-x-8 transition-all duration-500 ease-in-out ${
+                  isOnSubPage ? 'translate-x-0' : 'translate-x-0'
+                }`}
+              >
+                <Button asChild variant="ghost" className="py-2 px-4 rounded-lg hover:bg-blue-50 transition-colors">
+                  <Link 
+                    href="/dashboard/learning-roadmap"
+                    className="flex items-center space-x-2"
+                  >
+                    <BookOpen className="h-4 w-4" />
+                    <span>Learning Roadmap</span>
+                  </Link>
                 </Button>
                 <Button asChild variant="ghost" className="py-2 px-4 rounded-lg hover:bg-green-50 transition-colors">
-                <Link 
-                  href="/dashboard/peer-matching"
-                  className="flex items-center space-x-2"
-                >
-                  <Users className="h-4 w-4" />
-                  <span>Peer Matching</span>
-                </Link>
+                  <Link 
+                    href="/dashboard/peer-matching"
+                    className="flex items-center space-x-2"
+                  >
+                    <Users className="h-4 w-4" />
+                    <span>Peer Matching</span>
+                  </Link>
                 </Button>
+              </div>
             </nav>
           </div>
         </div>
