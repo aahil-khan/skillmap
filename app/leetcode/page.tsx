@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
+import { supabase } from "@/lib/supabase"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -576,30 +577,41 @@ export default function LeetCodePage() {
   }
 
   useEffect(() => {
-    // Check if user is logged in
-    const userData = localStorage.getItem("skillmap-user")
-    if (!userData) {
-      router.push("/auth")
-      return
+    // Check if user is logged in using Supabase session
+    const checkAuth = async () => {
+      const { data: { session }, error } = await supabase.auth.getSession()
+      
+      if (!session?.user) {
+        router.push("/auth")
+        return
+      }
+
+      // Get user details from Supabase session
+      const userData = {
+        name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || "User",
+        email: session.user.email || "",
+        profilePicture: session.user.user_metadata?.avatar_url || undefined
+      }
+
+      setUserProfile({
+        name: userData.name,
+        email: userData.email,
+        profilePicture: userData.profilePicture,
+      })
+
+      // Check if LeetCode is already connected
+      const connected = localStorage.getItem("leetcode-connected")
+      const savedUsername = localStorage.getItem("leetcode-username")
+      const savedProfile = localStorage.getItem("leetcode-profile")
+
+      if (connected && savedUsername && savedProfile) {
+        setIsConnected(true)
+        setUsername(savedUsername)
+        setProfile(JSON.parse(savedProfile))
+      }
     }
 
-    const user = JSON.parse(userData)
-    setUserProfile({
-      name: user.name || "John Doe",
-      email: user.email,
-      profilePicture: user.profilePicture,
-    })
-
-    // Check if LeetCode is already connected
-    const connected = localStorage.getItem("leetcode-connected")
-    const savedUsername = localStorage.getItem("leetcode-username")
-    const savedProfile = localStorage.getItem("leetcode-profile")
-
-    if (connected && savedUsername && savedProfile) {
-      setIsConnected(true)
-      setUsername(savedUsername)
-      setProfile(JSON.parse(savedProfile))
-    }
+    checkAuth()
   }, [router])
 
   // Custom tooltip effect for heatmap
@@ -959,7 +971,7 @@ export default function LeetCodePage() {
                         <Badge className="bg-blue-100 text-blue-800">
                           <Star className="w-3 h-3 mr-1" />
                           {profile?.reputation || 0} reputation
-                        </Badge>
+                        </Badge>  
                       </div>
                     </div>
                   </div>
