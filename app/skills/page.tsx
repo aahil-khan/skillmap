@@ -9,11 +9,12 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Menu, User, ArrowLeft, ArrowRight, CheckCircle, Plus, Trash2, X, AlertCircle } from "lucide-react"
+import { Menu, User, ArrowLeft, ArrowRight, CheckCircle, Plus, Trash2, X, AlertCircle, Loader2 } from "lucide-react"
 import Link from "next/link"
 import Navbar from "@/components/Navbar"
 import { api, APIErrorClass, isAuthError } from "@/lib/api-error-handler"
 import { PageErrorBoundary } from "@/components/GlobalErrorBoundary"
+import { getUserSkills, getUserProfile, type SkillCategory as APISkillCategory, type Skill as APISkill } from "@/lib/api"
 
 interface Skill {
   name: string
@@ -34,28 +35,52 @@ function SkillsPageContent() {
   useAuthRedirect()
   const router = useRouter()
   const [categorizedSkills, setCategorizedSkills] = useState<CategorizedSkill[]>([])
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [isLoaded, setIsLoaded] = useState(false)
   const [error, setError] = useState<string>("")
   const [newSkillInputs, setNewSkillInputs] = useState<Record<string, string>>({}) // Track input values for each category
 
   useEffect(() => {
     setIsLoaded(true)
-    const extractedSkills = localStorage.getItem("extracted-skills")
-    if (!extractedSkills) {
-      router.push("/upload")
-      return
+    
+    // Fetch skills from API instead of localStorage
+    async function fetchSkills() {
+      setIsLoading(true)
+      setError("")
+      
+      try {
+        const skillCategories = await getUserSkills()
+        
+        if (!skillCategories || skillCategories.length === 0) {
+          // No skills found, redirect to upload
+          router.push("/upload")
+          return
+        }
+
+        // Convert API format to UI format
+        const categorizedSkillsData: CategorizedSkill[] = skillCategories.map(category => ({
+          category: category.category,
+          skills: category.skills.map(skill => ({
+            name: skill.name,
+            level: skill.level
+          }))
+        }))
+        
+        setCategorizedSkills(categorizedSkillsData)
+      } catch (err) {
+        console.error('Failed to fetch skills:', err)
+        setError('Failed to load skills. Please try again.')
+        
+        // If auth error, redirect to login
+        if (err instanceof APIErrorClass && isAuthError(err)) {
+          setTimeout(() => router.push('/auth'), 2000)
+        }
+      } finally {
+        setIsLoading(false)
+      }
     }
 
-    const skillCategories: SkillCategory[] = JSON.parse(extractedSkills)
-    const categorizedSkillsData: CategorizedSkill[] = skillCategories.map(category => ({
-      category: category.category,
-      skills: category.skills.map(skillName => ({
-        name: skillName,
-        level: "beginner" as const
-      }))
-    }))
-    setCategorizedSkills(categorizedSkillsData)
+    fetchSkills()
   }, [router])
 
   const updateSkillLevel = (categoryName: string, skillName: string, level: "beginner" | "intermediate" | "advanced") => {
@@ -115,24 +140,15 @@ function SkillsPageContent() {
 
   const handleContinue = async () => {
     setIsLoading(true)
+    setError("")
     
-    // Update technical_skills in profile-data with new categorizedSkills (include level property)
-    const profileDataRaw = localStorage.getItem("profile-data")
-    if (profileDataRaw) {
-      const profile = JSON.parse(profileDataRaw)
-      profile.technical_skills = categorizedSkills.map(cat => ({
-      category: cat.category,
-      skills: cat.skills.map(skill => ({
-        name: skill.name,
-        level: skill.level
-        }))
-      }))
-      console.log('Updated profile with technical skills:', profile.technical_skills)
-      localStorage.setItem("profile-data", JSON.stringify(profile))
-    }
-
-    localStorage.setItem("user-skills", JSON.stringify(categorizedSkills))
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    // Skills are already in the database from resume upload
+    // No need to store in localStorage - just navigate to next step
+    // The backend has all skills in the normalized 'skills' table
+    
+    console.log('Continuing with skills:', categorizedSkills)
+    
+    await new Promise((resolve) => setTimeout(resolve, 500))
     router.push("/intent")
   }
 
@@ -168,9 +184,24 @@ function SkillsPageContent() {
             </p>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Skills Grid by Category */}
-            <div className="space-y-8">
-              {categorizedSkills.map((category, categoryIndex) => (
+            {/* Loading State */}
+            {isLoading && categorizedSkills.length === 0 ? (
+              <div className="space-y-8">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="space-y-4">
+                    <div className="h-8 w-48 bg-gray-200 rounded animate-pulse"></div>
+                    <div className="space-y-3">
+                      {[1, 2, 3].map((j) => (
+                        <div key={j} className="h-16 bg-gray-100 rounded animate-pulse"></div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              /* Skills Grid by Category */
+              <div className="space-y-8">
+                {categorizedSkills.map((category, categoryIndex) => (
                 <div key={category.category} className={`animate-fadeInUp animate-delay-${categoryIndex * 200}`}>
                   <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
                     <Badge variant="secondary" className="mr-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white">
@@ -237,10 +268,12 @@ function SkillsPageContent() {
                   </div>
                 </div>
               ))}
-            </div>
+              </div>
+            )}
 
             {/* Summary */}
-            <div className="bg-blue-50 p-6 rounded-lg">
+            {categorizedSkills.length > 0 && (
+              <div className="bg-blue-50 p-6 rounded-lg">
               <h3 className="font-semibold text-blue-900 mb-2">Skills Summary</h3>
               <div className="flex flex-wrap gap-2">
                 <Badge className="bg-green-100 text-green-800">
@@ -257,8 +290,10 @@ function SkillsPageContent() {
                 </Badge>
               </div>
             </div>
+            )}
 
             {/* Action Buttons */}
+            {categorizedSkills.length > 0 && (
             <div className="flex justify-between pt-6">
               <Button variant="outline" asChild>
                 <Link href="/upload">
@@ -282,6 +317,7 @@ function SkillsPageContent() {
                 {!isLoading && <ArrowRight className="ml-2 h-4 w-4" />}
               </Button>
             </div>
+            )}
           </CardContent>
         </Card>
       </div>

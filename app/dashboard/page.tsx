@@ -12,6 +12,7 @@ import Link from "next/link"
 import { ChartContainer } from "@/components/ui/chart"
 import { api, APIErrorClass, isAuthError } from "@/lib/api-error-handler"
 import { PageErrorBoundary } from "@/components/GlobalErrorBoundary"
+import { getUserProfile, getUserSkills, getSkillGapAnalysis } from "@/lib/api"
 
 interface SkillCategory {
   name: string
@@ -39,16 +40,66 @@ const COLORS = ["#8b1538", "#2f5f5f", "#4a90e2", "#f39c12", "#27ae60", "#9b59b6"
 function DashboardOverviewPageContent() {
   const [resumeScore, setResumeScore] = useState<number>(0)
   const [analysisData, setAnalysisData] = useState<any>(null)
+  const [skillsWithLevels, setSkillsWithLevels] = useState<Array<{name: string, level: string}>>([])
   const [targetScore, setTargetScore] = useState<number | null>(null)
   const [scoreError, setScoreError] = useState<boolean>(false)
   const [isFetchingScore, setIsFetchingScore] = useState<boolean>(false)
+  const [isLoadingProfile, setIsLoadingProfile] = useState<boolean>(true)
 
   useEffect(() => {
-    // Get analysis data from localStorage (if any)
-    const analysis = localStorage.getItem("skill-analysis")
-    if (analysis) {
-      setAnalysisData(JSON.parse(analysis))
+    // Fetch user profile and skill gap analysis from API
+    const fetchProfileData = async () => {
+      setIsLoadingProfile(true)
+      try {
+        // Fetch complete profile and skill gap analysis in parallel
+        const [profile, skillGapAnalysis] = await Promise.all([
+          getUserProfile(),
+          getSkillGapAnalysis().catch(() => null) // Analysis might not exist yet
+        ])
+        
+        // Extract skills with their actual levels from profile
+        const allSkillsWithLevels = profile.technical_skills.flatMap(cat => 
+          cat.skills.map(skill => ({
+            name: skill.name,
+            level: skill.level
+          }))
+        )
+        setSkillsWithLevels(allSkillsWithLevels)
+        
+        // Debug: Log work experience data
+        console.log('📊 Profile work_experience:', profile.work_experience)
+        console.log('📊 Work experience count:', profile.work_experience?.length || 0)
+        if (profile.work_experience?.length > 0) {
+          console.log('📊 First work experience:', profile.work_experience[0])
+        }
+        
+        // Use skill gap analysis if available, otherwise use profile data
+        if (skillGapAnalysis) {
+          setAnalysisData({
+            keySkills: allSkillsWithLevels.map(s => s.name),
+            workExperience: profile.work_experience || [],
+          })
+        } else {
+          // Fallback to profile data
+          setAnalysisData({
+            keySkills: allSkillsWithLevels.map(s => s.name),
+            workExperience: profile.work_experience || [],
+          })
+        }
+      } catch (error) {
+        console.error('Failed to fetch profile data:', error)
+        // Set empty data to avoid errors
+        setAnalysisData({
+          keySkills: [],
+          workExperience: [],
+        })
+        setSkillsWithLevels([])
+      } finally {
+        setIsLoadingProfile(false)
+      }
     }
+
+    fetchProfileData()
 
     // Fetch ATS score
     const fetchATSScore = async () => {
@@ -132,22 +183,25 @@ function DashboardOverviewPageContent() {
     "CSS", "HTML", "TypeScript", "MongoDB", "Express.js", "RESTful APIs",
   ]
 
-  const workExperience: WorkExperience[] = analysisData?.workExperience || [
-    {
-      title: "Software Developer",
-      company: "Tech Solutions Inc.",
-      duration: "Jan 2022 - Present",
-      description: "Developed and maintained web applications using React and Node.js.",
-      skills: ["React", "Node.js", "JavaScript", "CSS"],
-    },
-    {
-      title: "Junior Developer",
-      company: "StartupXYZ",
-      duration: "Jun 2021 - Dec 2021",
-      description: "Assisted in building responsive websites and mobile applications.",
-      skills: ["HTML", "CSS", "JavaScript", "React Native"],
-    },
-  ]
+  // Use actual work experience data from API, with proper fallback check
+  const workExperience: WorkExperience[] = (analysisData?.workExperience && analysisData.workExperience.length > 0) 
+    ? analysisData.workExperience 
+    : [
+      {
+        title: "Software Developer",
+        company: "Tech Solutions Inc.",
+        duration: "Jan 2022 - Present",
+        description: "Developed and maintained web applications using React and Node.js.",
+        skills: ["React", "Node.js", "JavaScript", "CSS"],
+      },
+      {
+        title: "Junior Developer",
+        company: "StartupXYZ",
+        duration: "Jun 2021 - Dec 2021",
+        description: "Assisted in building responsive websites and mobile applications.",
+        skills: ["HTML", "CSS", "JavaScript", "React Native"],
+      },
+    ]
 
   const recommendedRoles: RecommendedRole[] = [
     {
@@ -298,13 +352,13 @@ function DashboardOverviewPageContent() {
                       <div className="flex justify-between items-center mb-2">
                         <span className="text-sm font-medium">Advanced Skills</span>
                         <Badge className="bg-green-100 text-green-800">
-                          {topSkills.filter((_: string, i: number) => i < 4).length} skills
+                          {skillsWithLevels.filter(s => s.level === 'advanced').length} skills
                         </Badge>
                       </div>
                       <div className="flex flex-wrap gap-1">
-                        {topSkills.slice(0, 4).map((skill: string) => (
-                          <Badge key={skill} className="bg-green-100 text-green-800 text-xs">
-                            {skill}
+                        {skillsWithLevels.filter(s => s.level === 'advanced').map((skill) => (
+                          <Badge key={skill.name} className="bg-green-100 text-green-800 text-xs">
+                            {skill.name}
                           </Badge>
                         ))}
                       </div>
@@ -314,13 +368,13 @@ function DashboardOverviewPageContent() {
                       <div className="flex justify-between items-center mb-2">
                         <span className="text-sm font-medium">Intermediate Skills</span>
                         <Badge className="bg-yellow-100 text-yellow-800">
-                          {topSkills.filter((_: string, i: number) => i >= 4 && i < 8).length} skills
+                          {skillsWithLevels.filter(s => s.level === 'intermediate').length} skills
                         </Badge>
                       </div>
                       <div className="flex flex-wrap gap-1">
-                        {topSkills.slice(4, 8).map((skill: string) => (
-                          <Badge key={skill} className="bg-yellow-100 text-yellow-800 text-xs">
-                            {skill}
+                        {skillsWithLevels.filter(s => s.level === 'intermediate').map((skill) => (
+                          <Badge key={skill.name} className="bg-yellow-100 text-yellow-800 text-xs">
+                            {skill.name}
                           </Badge>
                         ))}
                       </div>
@@ -330,13 +384,13 @@ function DashboardOverviewPageContent() {
                       <div className="flex justify-between items-center mb-2">
                         <span className="text-sm font-medium">Beginner Skills</span>
                         <Badge className="bg-blue-100 text-blue-800">
-                          {topSkills.filter((_: string, i: number) => i >= 8).length} skills
+                          {skillsWithLevels.filter(s => s.level === 'beginner').length} skills
                         </Badge>
                       </div>
                       <div className="flex flex-wrap gap-1">
-                        {topSkills.slice(8).map((skill: string) => (
-                          <Badge key={skill} className="bg-blue-100 text-blue-800 text-xs">
-                            {skill}
+                        {skillsWithLevels.filter(s => s.level === 'beginner').map((skill) => (
+                          <Badge key={skill.name} className="bg-blue-100 text-blue-800 text-xs">
+                            {skill.name}
                           </Badge>
                         ))}
                       </div>
@@ -358,9 +412,13 @@ function DashboardOverviewPageContent() {
                     </div>
                     <div className="text-center p-3 bg-purple-50 rounded-lg">
                       <div className="text-2xl font-bold text-purple-600">
-                        {Math.round(
-                          workExperience.reduce((acc: number, exp: WorkExperience) => acc + exp.skills.length, 0) / workExperience.length,
-                        )}
+                        {workExperience.length > 0
+                          ? Math.round(
+                              workExperience.reduce((acc: number, exp: WorkExperience) => 
+                                acc + (exp.skills?.length || 0), 0
+                              ) / workExperience.length
+                            )
+                          : 0}
                       </div>
                       <div className="text-sm text-purple-700">Avg Skills/Role</div>
                     </div>

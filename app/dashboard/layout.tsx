@@ -127,12 +127,9 @@ export default function DashboardLayout({
     const initializePage = async () => {
       await checkAuth()
       
-      // Get analysis data from localStorage (if any)
-      const analysis = localStorage.getItem("skill-analysis")
-      if (analysis) {
-        setAnalysisData(JSON.parse(analysis))
-      }
-
+      // Skill gap analysis will be fetched from API in dashboard page components
+      // No need to use localStorage anymore
+      
       // Fetch ATS score - this will set isFetchingScore states
       await fetchATSScore()
       setIsLoading(false)

@@ -13,6 +13,7 @@ import Link from "next/link"
 import Navbar from "@/components/Navbar"
 import { apiFetch } from "@/lib/utils"
 import { PageErrorBoundary } from "@/components/GlobalErrorBoundary"
+import { getUserProfile } from "@/lib/api"
 
 const EXAMPLE_INTENTS = [
   "I want to learn Data Structures and Algorithms",
@@ -61,29 +62,30 @@ function IntentPageContent() {
       const data = await response.json()
       const refinedIntent = data.goalResponse || data.standalone || intent.trim()
 
-      // Get stored profile data from localStorage
-      const storedProfile = localStorage.getItem("profile-data")
-      let profileData = {}
+      console.log('Goal refined and stored in database:', refinedIntent)
       
-      if (storedProfile) {
-        profileData = JSON.parse(storedProfile)
-      }
+      // No need to store in localStorage - backend already stored in learning_goals table!
+      // The /convert-to-standalone endpoint stores:
+      // - original_goal
+      // - refined_goal
+      // - status: 'active'
+      // - All in the learning_goals table
 
-      // Add goal property with refined intent
-      const updatedProfile = {
-        ...profileData,
-        goal: refinedIntent
-      }
-
-      // Handle response if needed
+      // Send profile data to backend (will also calculate ATS score)
       try {
+        const profile = await getUserProfile()
+        
         const userResponse = await fetch('/api/user-profile', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${session.access_token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(updatedProfile),
+          body: JSON.stringify({
+            name: profile.profile?.name || 'User',
+            goal: refinedIntent,
+            technical_skills: profile.technical_skills || [],
+          }),
         })
 
         if (userResponse.ok) {
@@ -93,34 +95,17 @@ function IntentPageContent() {
         console.warn('Failed to send profile to backend:', profileError)
       }
 
-      // Save updated profile back to localStorage
-      localStorage.setItem("profile-data", JSON.stringify(updatedProfile))
-      localStorage.setItem("user-intent", refinedIntent)
-
-      console.log('Profile updated with goal:', updatedProfile)
+      console.log('Goal processed successfully')
       
       router.push("/results")
       
     } catch (apiError) {
-      console.warn('API call failed, using original intent:', apiError)
+      console.error('API call failed:', apiError)
       
-      // Fallback: use original intent if API fails
-      const storedProfile = localStorage.getItem("profile-data")
-      let profileData = {}
+      // If API fails, still try to navigate
+      // The backend might have still stored the goal
+      alert('There was an error processing your goal. Please try again.')
       
-      if (storedProfile) {
-        profileData = JSON.parse(storedProfile)
-      }
-
-      const updatedProfile = {
-        ...profileData,
-        goal: intent.trim()
-      }
-
-      localStorage.setItem("profile-data", JSON.stringify(updatedProfile))
-      localStorage.setItem("user-intent", intent.trim())
-      
-      router.push("/results")
     } finally {
       setIsLoading(false)
     }

@@ -7,11 +7,12 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { ErrorAlert } from "@/components/ui/error-alert"
-import { Brain, CheckCircle, AlertTriangle, TrendingUp, ArrowLeft, ArrowRight, Menu, User } from "lucide-react"
+import { Brain, CheckCircle, AlertTriangle, TrendingUp, ArrowLeft, ArrowRight, Menu, User, Loader2 } from "lucide-react"
 import { api, APIErrorClass, isAuthError } from "@/lib/api-error-handler"
 import { getBackendUrl, BACKEND_ENDPOINTS } from "@/lib/config"
 import Link from "next/link"
 import { PageErrorBoundary } from "@/components/GlobalErrorBoundary"
+import { getUserProfile } from "@/lib/api"
 
 interface SkillItem {
   name: string
@@ -59,17 +60,12 @@ function ResultsPageContent() {
     setError("")
 
     try {
-      // Get profile data from localStorage
-      const profileData = localStorage.getItem("profile-data")
-      if (!profileData) {
-        router.push("/upload")
-        return
-      }
-
-      const profile = JSON.parse(profileData)
+      // Check if user has profile data in database
+      const profile = await getUserProfile()
       
-      if (!profile.name) {
-        setError("Profile data is incomplete. Please upload your resume again.")
+      if (!profile.profile || !profile.profile.name) {
+        setError("Profile not found. Please upload your resume first.")
+        setTimeout(() => router.push("/upload"), 2000)
         return
       }
 

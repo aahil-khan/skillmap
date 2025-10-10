@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Menu, User, LogOut, ChevronDown } from "lucide-react"
 import { supabase } from "@/lib/supabase"
+import { clearLocalStorageData } from "@/lib/api"
 
 interface NavbarProps {
   showExploreMenu?: boolean
@@ -94,10 +95,13 @@ export default function Navbar({ showExploreMenu, setShowExploreMenu }: NavbarPr
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
+    
+    // Clear all non-auth localStorage data
+    clearLocalStorageData()
+    
+    // Keep auth token removal separate
     localStorage.removeItem('sb-jwt')
-    localStorage.removeItem('profile-data')
-    localStorage.removeItem('extracted-skills')
-    localStorage.removeItem('user-skills')
+    
     setIsAuthenticated(false)
     setUserDetails(null)
     setShowProfileMenu(false)

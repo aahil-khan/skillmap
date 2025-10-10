@@ -71,33 +71,18 @@ function UploadPageContent() {
       // Use the new API client with automatic auth token injection
       const data = await api.upload(getBackendUrl(BACKEND_ENDPOINTS.UPLOAD_RESUME), formData)
 
-      // Store profile data
-      localStorage.setItem("profile-data", JSON.stringify(data.profile || data))
+      console.log('Resume uploaded successfully:', data)
 
-      console.log('Profile data received:', data)
+      // No need to store in localStorage - data is now in database!
+      // Backend already stored everything in normalized tables:
+      // - resumes table (file metadata + raw_text)
+      // - user_profiles table (name, email, strengths)
+      // - skills table (all technical skills)
+      // - work_experience table (job history)
+      // - projects table (portfolio)
+      // - education table (degrees)
 
-      // Extract technical skills from the response
-      const extractedSkills: Array<{ category: string; skills: string[] }> = []
-      
-      // Handle the double-nested profile structure
-      const technicalSkills = data.profile?.technical_skills || data.technical_skills
-
-      if (technicalSkills) {
-        technicalSkills.forEach((category: any) => {
-          console.log('Processing category:', category)
-          if (category.category && category.skills) {
-            extractedSkills.push({
-              category: category.category,
-              skills: category.skills
-            })
-          }
-        })
-      } else {
-        console.log('No technical skills found in response')
-      }
-
-      console.log('Extracted skills:', extractedSkills)
-      localStorage.setItem("extracted-skills", JSON.stringify(extractedSkills))
+      // Redirect to skills page - it will fetch from API
       router.push("/skills")
       
     } catch (err) {

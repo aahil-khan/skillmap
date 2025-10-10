@@ -126,16 +126,10 @@ function OnboardingPageContent() {
       // Call API to save user profile
       const result = await api.post(getBackendUrl(BACKEND_ENDPOINTS.USER_PROFILE), profileData)
       
-      console.log('Profile saved:', result)
+      console.log('Profile saved to database:', result)
 
-      // Store data locally for immediate use
-      const userData = {
-        skills,
-        projects,
-        goal,
-        timestamp: Date.now(),
-      }
-      localStorage.setItem("skillmap-data", JSON.stringify(userData))
+      // No need to store in localStorage - data is now in database!
+      // Backend stores everything in normalized tables
       
       // Navigate to results
       router.push("/results")
