@@ -452,35 +452,44 @@ function ResultsPageContent() {
         ))}
 
         {/* Summary Section */}
-        <Card className="animate-fadeInUp animate-delay-800">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Brain className="mr-2 h-6 w-6 text-blue-600" />
+        <Card className="animate-fadeInUp animate-delay-800 border-2 border-blue-100 shadow-lg">
+          <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b-2 border-blue-100">
+            <CardTitle className="flex items-center text-2xl">
+              <Brain className="mr-3 h-7 w-7 text-blue-600" />
               Personalized Learning Recommendations
             </CardTitle>
+            <p className="text-sm text-gray-600 mt-2">Your customized roadmap based on your skills analysis</p>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-8 pt-8">
             {/* Target Area */}
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-              <h3 className="text-lg font-semibold text-blue-800 mb-2 flex items-center">
-                <Target className="h-5 w-5 mr-2" />
+            <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-6 rounded-xl border-2 border-blue-200 shadow-md">
+              <h3 className="text-xl font-bold text-blue-900 mb-3 flex items-center">
+                <Target className="h-6 w-6 mr-3" />
                 Target Area
               </h3>
-              <p className="text-blue-700">Based on your goal, I can see you're targeting <span className="font-semibold">{analysis.user_goal}</span></p>
+              <p className="text-blue-800 text-lg leading-relaxed">
+                Based on your goal, I can see you're targeting <span className="font-bold text-blue-900 bg-blue-200 px-2 py-1 rounded">{analysis.user_goal}</span>
+              </p>
             </div>
 
             {/* Strengths Section */}
-            <div className="bg-green-50 p-4 rounded-lg border border-green-100">
-              <h3 className="text-lg font-semibold text-green-800 mb-2 flex items-center">
-                <CheckCircle className="h-5 w-5 mr-2" />
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl border-2 border-green-200 shadow-md">
+              <h3 className="text-xl font-bold text-green-900 mb-4 flex items-center">
+                <CheckCircle className="h-6 w-6 mr-3" />
                 Your Strengths
               </h3>
-              <div className="text-green-700 prose prose-sm">
+              <div className="space-y-3">
                 {analysis.analysis.map((category) => 
                   category.skills.present.length > 0 && (
-                    <div key={category.detected_category} className="mb-2">
-                      <span className="font-medium">{category.detected_category}:</span>{' '}
-                      {category.skills.present.map(skill => skill.name).join(', ')}
+                    <div key={category.detected_category} className="bg-white p-4 rounded-lg border border-green-200">
+                      <span className="font-bold text-green-900 text-lg">{category.detected_category}:</span>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {category.skills.present.map((skill, idx) => (
+                          <span key={idx} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 border border-green-300">
+                            {skill.name}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   )
                 )}
@@ -498,9 +507,9 @@ function ResultsPageContent() {
               </div>
 
               {/* Timeline */}
-              <div className="relative max-h-[600px] overflow-y-auto max-w-3xl mx-auto scrollbar-thin scrollbar-thumb-blue-200 scrollbar-track-blue-50 hover:scrollbar-thumb-blue-300">
+              <div className="relative max-h-[600px] overflow-y-auto max-w-3xl mx-auto scrollbar-thin scrollbar-thumb-blue-200 scrollbar-track-blue-50 hover:scrollbar-thumb-blue-300 pl-32 pr-8">
                 {/* Vertical line with gradient and glow */}
-                <div className="absolute left-[29px] top-0 bottom-0 w-[2px] bg-gradient-to-b from-blue-500 via-blue-400 to-blue-300">
+                <div className="absolute left-[157px] top-0 bottom-0 w-[2px] bg-gradient-to-b from-blue-500 via-blue-400 to-blue-300">
                   <div className="absolute inset-0 bg-blue-400 opacity-25 blur-sm"></div>
                 </div>
 
@@ -509,7 +518,7 @@ function ResultsPageContent() {
                   category.skills.gaps.map((skill, index) => (
                     <div key={skill.name} className="relative mb-12 ml-20">
                       {/* Timeline dot, connector, and phase label */}
-                      <div className="absolute -left-[40px] flex flex-col items-center sticky top-4">
+                      <div className="absolute -left-[40px] flex flex-col items-center top-4">
                         {/* Phase number and connecting line */}
                         <div className="relative">
                           <div className="w-10 h-10 rounded-full border-4 border-white shadow-[0_0_10px_rgba(59,130,246,0.5)] bg-gradient-to-r from-blue-500 to-blue-400 flex items-center justify-center text-white font-bold">
@@ -523,9 +532,9 @@ function ResultsPageContent() {
                             </div>
                           )}
                         </div>
-                        {/* Phase label */}
-                        <div className="absolute -left-24 top-1/2 -translate-y-1/2 whitespace-nowrap">
-                          <span className="text-sm font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
+                        {/* Phase label - Fixed positioning */}
+                        <div className="absolute -left-28 top-1/2 -translate-y-1/2 whitespace-nowrap">
+                          <span className="text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
                             Phase {categoryIndex + index + 1}
                           </span>
                         </div>
@@ -572,33 +581,37 @@ function ResultsPageContent() {
               </div>
             </div>
             {/* Next Steps */}
-            <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
-              <h3 className="text-lg font-semibold text-purple-800 mb-3 flex items-center">
-                <ArrowUpRight className="h-5 w-5 mr-2" />
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-xl border-2 border-purple-200 shadow-md">
+              <h3 className="text-xl font-bold text-purple-900 mb-4 flex items-center">
+                <ArrowUpRight className="h-6 w-6 mr-3" />
                 Recommended Next Steps
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {[
                   {
-                    icon: <BookOpen className="h-4 w-4" />,
-                    text: "Complete courses on core missing skills first"
+                    icon: <BookOpen className="h-5 w-5" />,
+                    text: "Complete courses on core missing skills first",
+                    color: "bg-purple-100 text-purple-700 border-purple-300"
                   },
                   {
-                    icon: <Code className="h-4 w-4" />,
-                    text: "Build small projects to practice new concepts"
+                    icon: <Code className="h-5 w-5" />,
+                    text: "Build small projects to practice new concepts",
+                    color: "bg-pink-100 text-pink-700 border-pink-300"
                   },
                   {
-                    icon: <Users className="h-4 w-4" />,
-                    text: "Join relevant communities and forums"
+                    icon: <Users className="h-5 w-5" />,
+                    text: "Join relevant communities and forums",
+                    color: "bg-indigo-100 text-indigo-700 border-indigo-300"
                   },
                   {
-                    icon: <GitBranch className="h-4 w-4" />,
-                    text: "Create a portfolio showcasing your progress"
+                    icon: <GitBranch className="h-5 w-5" />,
+                    text: "Create a portfolio showcasing your progress",
+                    color: "bg-violet-100 text-violet-700 border-violet-300"
                   }
                 ].map((step, i) => (
-                  <div key={i} className="flex items-center space-x-2 text-purple-700">
-                    <div className="flex-shrink-0">{step.icon}</div>
-                    <span className="text-sm">{step.text}</span>
+                  <div key={i} className={`flex items-start space-x-3 p-4 rounded-lg border-2 ${step.color} shadow-sm hover:shadow-md transition-shadow`}>
+                    <div className="flex-shrink-0 mt-1">{step.icon}</div>
+                    <span className="text-sm font-medium leading-relaxed">{step.text}</span>
                   </div>
                 ))}
               </div>

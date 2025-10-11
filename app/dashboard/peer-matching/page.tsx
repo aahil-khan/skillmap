@@ -895,10 +895,6 @@ export default function PeerMatchingPage() {
                               <p className="text-[#8b1538] font-medium text-sm truncate">{peer.title}</p>
                               <p className="text-gray-600 text-xs capitalize">{peer.experienceLevel}</p>
                             </div>
-                            <div className="text-right">
-                              <div className="text-xl font-bold text-[#8b1538]">{Math.round(peer.overallScore)}</div>
-                              <div className="text-xs text-gray-500">Match</div>
-                            </div>
                           </div>
 
                           <div className="flex-1 space-y-3 overflow-y-auto">
