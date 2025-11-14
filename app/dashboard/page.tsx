@@ -1,42 +1,22 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { useAuthRedirect } from "@/hooks/useAuthRedirect"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
-import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts"
-import { Menu, User, Download, Calendar, Mail, Target, Award, Clock, ArrowRight, Briefcase, BookOpen, Code, Settings, MapPin, CheckCircle2, Circle, Play, Star, ExternalLink,} from "lucide-react"
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
+import { Target, Award, Clock, ArrowRight, Briefcase, BookOpen, Code, Settings, TrendingUp } from "lucide-react"
 import Link from "next/link"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import Navbar from "@/components/Navbar"
-
-interface UserProfile {
-  name: string
-  email: string
-  resumeUploadDate: string
-  title?: string
-  bio?: string
-}
+import { ChartContainer } from "@/components/ui/chart"
+import { api, APIErrorClass, isAuthError } from "@/lib/api-error-handler"
+import { PageErrorBoundary } from "@/components/GlobalErrorBoundary"
 
 interface SkillCategory {
   name: string
   value: number
   color: string
-}
-
-interface Role {
-  title: string
-  match: number
-  missingSkills: string[]
-  description: string
 }
 
 interface WorkExperience {
@@ -47,97 +27,146 @@ interface WorkExperience {
   skills: string[]
 }
 
-interface RoadmapPhase {
-  id: number
+interface RecommendedRole {
   title: string
-  duration: string
-  status: "completed" | "current" | "upcoming"
-  skills: string[]
-  projects: string[]
-  resources: {
-    type: "course" | "book" | "tutorial" | "practice"
-    title: string
-    provider: string
-    url?: string
-    difficulty: "beginner" | "intermediate" | "advanced"
-  }[]
+  match: number
   description: string
+  missingSkills: string[]
 }
 
 const COLORS = ["#8b1538", "#2f5f5f", "#4a90e2", "#f39c12", "#27ae60", "#9b59b6"]
 
-export default function DashboardPage() {
-  useAuthRedirect() // Add authentication protection
-  const router = useRouter()
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [resumeScore, setResumeScore] = useState(0)
+function DashboardOverviewPageContent() {
+  const [resumeScore, setResumeScore] = useState<number>(0)
   const [analysisData, setAnalysisData] = useState<any>(null)
-  const [isEditingProfile, setIsEditingProfile] = useState(false)
-  const [editedProfile, setEditedProfile] = useState<UserProfile | null>(null)
-  const [hasMounted, setHasMounted] = useState(false)
+  const [targetScore, setTargetScore] = useState<number | null>(null)
+  const [scoreError, setScoreError] = useState<boolean>(false)
+  const [isFetchingScore, setIsFetchingScore] = useState<boolean>(false)
+
+  useEffect(() => {
+    // Get analysis data from localStorage (if any)
+    const analysis = localStorage.getItem("skill-analysis")
+    if (analysis) {
+      setAnalysisData(JSON.parse(analysis))
+    }
+
+    // Fetch ATS score
+    const fetchATSScore = async () => {
+      setIsFetchingScore(true)
+      setScoreError(false)
+      setResumeScore(0)
+      
+      try {
+        console.log('🔄 Starting ATS score fetch...')
+        
+        // Call Next.js API proxy route using our api client
+        const data = await api.get('/api/ats-score')
+        
+        console.log('✅ ATS Score data received:', data)
+        
+        // After handleAPIResponse, data is already unwrapped: { ats_score: 70 }
+        if (data && data.ats_score) {
+          setTargetScore(data.ats_score)
+          setScoreError(false)
+        } else {
+          console.error('Invalid API response structure:', data)
+          setScoreError(true)
+          setTargetScore(null)
+        }
+      } catch (error) {
+        if (error instanceof APIErrorClass) {
+          console.error('❌ API Error:', error.getUserMessage())
+          if (error.requestId) {
+            console.error('Request ID:', error.requestId)
+          }
+        } else {
+          console.error('❌ Failed to fetch ATS score:', error)
+        }
+        setScoreError(true)
+        setTargetScore(null)
+      } finally {
+        setIsFetchingScore(false)
+      }
+    }
+
+    fetchATSScore()
+  }, [])
+
+  // Score animation effect
+  useEffect(() => {
+    if (targetScore !== null && !isFetchingScore) {
+      let intervalId: NodeJS.Timeout | null = null
+      let score = 0
+      
+      intervalId = setInterval(() => {
+        score += 2
+        setResumeScore(score)
+        if (score >= targetScore) {
+          setResumeScore(targetScore)
+          if (intervalId) {
+            clearInterval(intervalId)
+            intervalId = null
+          }
+        }
+      }, 50)
+
+      return () => {
+        if (intervalId) {
+          clearInterval(intervalId)
+        }
+      }
+    }
+  }, [targetScore, isFetchingScore])
 
   // Mock data - in real app, this would come from API
   const skillCategories: SkillCategory[] = [
     { name: "Frontend", value: 35, color: "#8b1538" },
     { name: "Backend", value: 25, color: "#2f5f5f" },
-    { name: "Database", value: 15, color: "#4a90e2" },
+    { name: "Database", value: 15, color: "#4a90e2" },  
     { name: "DevOps", value: 10, color: "#f39c12" },
     { name: "Soft Skills", value: 15, color: "#27ae60" },
   ]
 
-  const topSkills = [
-    "JavaScript",
-    "React",
-    "Node.js",
-    "Python",
-    "SQL",
-    "Git",
-    "HTML",
-    "CSS",
-    "MongoDB",
-    "Express.js",
-    "TypeScript",
-    "Docker",
-    "AWS",
-    "REST APIs",
+  const topSkills: string[] = analysisData?.keySkills || [
+    "JavaScript", "React", "Node.js", "Python", "SQL", "Git",
+    "CSS", "HTML", "TypeScript", "MongoDB", "Express.js", "RESTful APIs",
   ]
 
-  const recommendedRoles: Role[] = [
+  const workExperience: WorkExperience[] = analysisData?.workExperience || [
     {
-      title: "Full Stack Developer",
-      match: 78,
-      missingSkills: ["System Design", "Redis", "Kubernetes"],
-      description: "Build end-to-end web applications",
+      title: "Software Developer",
+      company: "Tech Solutions Inc.",
+      duration: "Jan 2022 - Present",
+      description: "Developed and maintained web applications using React and Node.js.",
+      skills: ["React", "Node.js", "JavaScript", "CSS"],
     },
+    {
+      title: "Junior Developer",
+      company: "StartupXYZ",
+      duration: "Jun 2021 - Dec 2021",
+      description: "Assisted in building responsive websites and mobile applications.",
+      skills: ["HTML", "CSS", "JavaScript", "React Native"],
+    },
+  ]
+
+  const recommendedRoles: RecommendedRole[] = [
     {
       title: "Frontend Developer",
-      match: 85,
-      missingSkills: ["Vue.js", "Testing", "Web Performance"],
-      description: "Create engaging user interfaces",
+      match: 92,
+      description: "Perfect match for your React and JavaScript skills",
+      missingSkills: ["Vue.js", "Angular"],
     },
     {
-      title: "Backend Developer",
-      match: 72,
-      missingSkills: ["Microservices", "GraphQL", "Message Queues"],
-      description: "Design scalable server-side systems",
-    },
-  ]
-
-  const workExperience: WorkExperience[] = [
-    {
-      title: "Software Engineering Intern",
-      company: "Tech Startup Inc.",
-      duration: "Jun 2023 - Aug 2023",
-      description: "Developed React components and REST APIs for customer dashboard",
-      skills: ["React", "Node.js", "MongoDB", "Express.js"],
+      title: "Full Stack Developer",
+      match: 87,
+      description: "Your backend and frontend experience aligns well",
+      missingSkills: ["Docker", "Kubernetes"],
     },
     {
-      title: "Web Development Project",
-      company: "Personal Project",
-      duration: "Jan 2023 - May 2023",
-      description: "Built a full-stack e-commerce application with payment integration",
-      skills: ["JavaScript", "HTML", "CSS", "SQL", "Git"],
+      title: "React Developer",
+      match: 95,
+      description: "Excellent match for specialized React development",
+      missingSkills: ["Next.js", "Redux Toolkit"],
     },
   ]
 
@@ -146,13 +175,13 @@ export default function DashboardPage() {
       type: "Course",
       title: "Advanced React Patterns",
       provider: "Frontend Masters",
-      reason: "Strengthen your React skills for senior roles",
+      reason: "Enhance your React skills for senior-level positions",
     },
     {
       type: "Tool",
-      title: "Docker & Kubernetes",
-      provider: "Docker Official",
-      reason: "Essential for modern deployment workflows",
+      title: "Docker for Developers",
+      provider: "Docker Inc.",
+      reason: "Learn containerization to boost your DevOps skills",
     },
     {
       type: "Project",
@@ -162,399 +191,71 @@ export default function DashboardPage() {
     },
   ]
 
-  // Generate roadmap based on user's goal and current skills
-  const generateRoadmap = (goal: string, category: string): RoadmapPhase[] => {
-    if (category === "Data Structures & Algorithms") {
-      return [
-        {
-          id: 1,
-          title: "Foundation Phase",
-          duration: "4-6 weeks",
-          status: "completed",
-          skills: ["Arrays", "Strings", "Basic Math"],
-          projects: ["Array manipulation problems", "String processing challenges"],
-          resources: [
-            {
-              type: "course",
-              title: "Introduction to Algorithms",
-              provider: "MIT OpenCourseWare",
-              difficulty: "beginner",
-            },
-            {
-              type: "practice",
-              title: "LeetCode Easy Problems",
-              provider: "LeetCode",
-              difficulty: "beginner",
-            },
-          ],
-          description: "Master basic data structures and simple algorithms",
-        },
-        {
-          id: 2,
-          title: "Core Data Structures",
-          duration: "6-8 weeks",
-          status: "current",
-          skills: ["Linked Lists", "Stacks", "Queues", "Trees"],
-          projects: ["Implement a calculator", "Build a file system navigator"],
-          resources: [
-            {
-              type: "book",
-              title: "Cracking the Coding Interview",
-              provider: "Gayle McDowell",
-              difficulty: "intermediate",
-            },
-            {
-              type: "course",
-              title: "Data Structures and Algorithms",
-              provider: "Coursera",
-              difficulty: "intermediate",
-            },
-          ],
-          description: "Deep dive into fundamental data structures",
-        },
-        {
-          id: 3,
-          title: "Advanced Algorithms",
-          duration: "8-10 weeks",
-          status: "upcoming",
-          skills: ["Dynamic Programming", "Graph Algorithms", "Greedy Algorithms"],
-          projects: ["Shortest path finder", "Optimization problems"],
-          resources: [
-            {
-              type: "course",
-              title: "Advanced Algorithms",
-              provider: "Stanford Online",
-              difficulty: "advanced",
-            },
-            {
-              type: "practice",
-              title: "LeetCode Medium/Hard",
-              provider: "LeetCode",
-              difficulty: "advanced",
-            },
-          ],
-          description: "Master complex algorithmic patterns and optimization",
-        },
-        {
-          id: 4,
-          title: "Interview Preparation",
-          duration: "4-6 weeks",
-          status: "upcoming",
-          skills: ["System Design", "Behavioral Questions", "Mock Interviews"],
-          projects: ["Design a social media platform", "Build a distributed cache"],
-          resources: [
-            {
-              type: "book",
-              title: "Designing Data-Intensive Applications",
-              provider: "Martin Kleppmann",
-              difficulty: "advanced",
-            },
-            {
-              type: "practice",
-              title: "Mock Interview Practice",
-              provider: "Pramp",
-              difficulty: "intermediate",
-            },
-          ],
-          description: "Prepare for technical interviews at top companies",
-        },
-      ];
-    } else if (category === "Web Development") {
-      return [
-        {
-          id: 1,
-          title: "Frontend Fundamentals",
-          duration: "6-8 weeks",
-          status: "completed",
-          skills: ["HTML", "CSS", "JavaScript", "Responsive Design"],
-          projects: ["Personal portfolio", "Landing page"],
-          resources: [
-            {
-              type: "course",
-              title: "The Complete Web Developer Course",
-              provider: "Udemy",
-              difficulty: "beginner",
-            },
-            {
-              type: "tutorial",
-              title: "MDN Web Docs",
-              provider: "Mozilla",
-              difficulty: "beginner",
-            },
-          ],
-          description: "Master the building blocks of web development",
-        },
-        {
-          id: 2,
-          title: "Modern Frontend",
-          duration: "8-10 weeks",
-          status: "current",
-          skills: ["React", "TypeScript", "State Management", "Testing"],
-          projects: ["Todo app with React", "E-commerce frontend"],
-          resources: [
-            {
-              type: "course",
-              title: "React - The Complete Guide",
-              provider: "Udemy",
-              difficulty: "intermediate",
-            },
-            {
-              type: "practice",
-              title: "React Challenges",
-              provider: "Frontend Mentor",
-              difficulty: "intermediate",
-            },
-          ],
-          description: "Build dynamic user interfaces with modern frameworks",
-        },
-        {
-          id: 3,
-          title: "Backend Development",
-          duration: "10-12 weeks",
-          status: "upcoming",
-          skills: ["Node.js", "Express.js", "Databases", "REST APIs"],
-          projects: ["Blog API", "User authentication system"],
-          resources: [
-            {
-              type: "course",
-              title: "Node.js Developer Course",
-              provider: "The Odin Project",
-              difficulty: "intermediate",
-            },
-            {
-              type: "book",
-              title: "Node.js Design Patterns",
-              provider: "Mario Casciaro",
-              difficulty: "advanced",
-            },
-          ],
-          description: "Learn server-side development and database management",
-        },
-        {
-          id: 4,
-          title: "Full Stack Integration",
-          duration: "8-10 weeks",
-          status: "upcoming",
-          skills: ["Full Stack Apps", "Deployment", "DevOps", "Performance"],
-          projects: ["Social media app", "Real-time chat application"],
-          resources: [
-            {
-              type: "course",
-              title: "Full Stack Open",
-              provider: "University of Helsinki",
-              difficulty: "advanced",
-            },
-            {
-              type: "practice",
-              title: "Deploy to Production",
-              provider: "Vercel/Netlify",
-              difficulty: "intermediate",
-            },
-          ],
-          description: "Combine frontend and backend into production-ready applications",
-        },
-      ];
-    }
-    // Default roadmap for other categories
-    return [
-      {
-        id: 1,
-        title: "Foundation Phase",
-        duration: "4-6 weeks",
-        status: "current",
-        skills: ["Basic concepts", "Core fundamentals"],
-        projects: ["Starter project"],
-        resources: [
-          {
-            type: "course",
-            title: "Getting Started",
-            provider: "Online Platform",
-            difficulty: "beginner",
-          },
-        ],
-        description: "Build a strong foundation in the basics",
-      },
-    ];
-  }
-
-  useEffect(() => {
-    setHasMounted(true)
+  const retryFetchScore = async () => {
+    setIsFetchingScore(true)
+    setScoreError(false)
+    setResumeScore(0)
     
-    // Load user profile and analysis data from localStorage
-    const loadData = () => {
-      try {
-        // Load profile data
-        const profileData = localStorage.getItem("profile-data")
-        const userIntent = localStorage.getItem("user-intent")
-        const extractedSkills = localStorage.getItem("extracted-skills")
-        
-        if (profileData) {
-          const parsedProfile = JSON.parse(profileData)
-          setUserProfile({
-            name: parsedProfile.name || "User",
-            email: parsedProfile.email || "user@example.com",
-            resumeUploadDate: new Date().toLocaleDateString(),
-            title: parsedProfile.title || "Software Developer",
-            bio: parsedProfile.bio || "Passionate about building great software"
-          })
-        } else {
-          // Default profile if no data found
-          setUserProfile({
-            name: "Demo User",
-            email: "demo@example.com",
-            resumeUploadDate: new Date().toLocaleDateString(),
-            title: "Software Developer",
-            bio: "Passionate about building great software"
-          })
-        }
-        
-        // Load analysis data
-        if (userIntent) {
-          setAnalysisData({
-            goal: userIntent,
-            category: "Web Development" // Default category
-          })
-        }
-        
-        // Calculate resume score based on available data
-        let score = 50 // Base score
-        if (profileData) score += 20
-        if (extractedSkills) score += 20
-        if (userIntent) score += 10
-        setResumeScore(Math.min(score, 100))
-        
-      } catch (error) {
-        console.error("Error loading dashboard data:", error)
-        // Set default values on error
-        setUserProfile({
-          name: "Demo User",
-          email: "demo@example.com",
-          resumeUploadDate: new Date().toLocaleDateString(),
-          title: "Software Developer",
-          bio: "Passionate about building great software"
-        })
-      } finally {
-        setIsLoading(false)
+    try {
+      console.log('🔄 Retrying ATS score fetch...')
+      
+      // Call Next.js API proxy route using our api client
+      const data = await api.get('/api/ats-score')
+      
+      console.log('Retry - API Response data:', data)
+      
+      // After handleAPIResponse, data is already unwrapped: { ats_score: 70 }
+      if (data && data.ats_score) {
+        setTargetScore(data.ats_score)
+        setScoreError(false)
+      } else {
+        console.error('Retry - Invalid API response structure:', data)
+        setScoreError(true)
+        setTargetScore(null)
       }
+    } catch (error) {
+      if (error instanceof APIErrorClass) {
+        console.error('Retry - API Error:', error.getUserMessage())
+        if (error.requestId) {
+          console.error('Request ID:', error.requestId)
+        }
+      } else {
+        console.error('Retry - Failed to fetch ATS score:', error)
+      }
+      setScoreError(true)
+      setTargetScore(null)
+    } finally {
+      setIsFetchingScore(false)
     }
-    
-    loadData()
-  }, [router])
-
-  const exportToPDF = () => {
-    // Placeholder for PDF export functionality
-    console.log("Exporting to PDF...")
-    alert("PDF export feature coming soon!")
-  }
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen skillmap-bg flex items-center justify-center">
-        <div className="animate-spin h-12 w-12 border-4 border-blue-600 border-t-transparent rounded-full"></div>
-      </div>
-    )
-  }
-
-  if (!userProfile) {
-    return (
-      <div className="min-h-screen skillmap-bg flex items-center justify-center">
-        <Card className="p-8 text-center">
-          <CardContent>
-            <h2 className="text-xl font-semibold mb-4">No Profile Data Found</h2>
-            <p className="text-gray-600 mb-4">Please upload your resume first to view your dashboard.</p>
-            <Button asChild>
-              <Link href="/upload">Upload Resume</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  const roadmapPhases = analysisData
-    ? generateRoadmap(analysisData.goal, analysisData.category)
-    : generateRoadmap("Learn Web Development", "Web Development")
-
-  if (!hasMounted || isLoading || !userProfile) {
-    return (
-      <div className="min-h-screen skillmap-bg flex items-center justify-center">
-        <div className="animate-spin h-12 w-12 border-4 border-blue-600 border-t-transparent rounded-full"></div>
-      </div>
-    );
   }
 
   return (
-    <div className="min-h-screen skillmap-bg">
-      <Navbar />
-
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        {/* Welcome Section */}
-        <div className="mb-8">
-          <Card className="shadow-lg border-0 card-hover animate-fadeInUp">
+    <div className="space-y-6">
+      <div className="grid lg:grid-cols-12 gap-6">
+        {/* Left Column */}
+        <div className="lg:col-span-8 space-y-6">
+          {/* Enhanced Skill Analysis */}
+          <Card className="shadow-lg border-0 rounded-2xl card-hover animate-slideInLeft animate-delay-100">
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-3xl font-bold text-gray-900">
-                    Welcome back, {userProfile.name}!
-                  </CardTitle>
-                  <p className="text-gray-600 mt-2">
-                    Here's your skill development progress and recommendations
-                  </p>
-                </div>
-                <Button onClick={exportToPDF} variant="outline">
-                  <Download className="h-4 w-4 mr-2" />
-                  Export PDF
-                </Button>
-              </div>
+              <CardTitle className="flex items-center space-x-2">
+                <Code className="h-6 w-6 text-purple-600" />
+                <span>Detailed Skill Analysis</span>
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-600">{resumeScore}%</div>
-                  <div className="text-sm text-gray-600">Resume Score</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-green-600">{topSkills.length}</div>
-                  <div className="text-sm text-gray-600">Skills Identified</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-purple-600">{recommendedRoles.length}</div>
-                  <div className="text-sm text-gray-600">Role Matches</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Main Dashboard Tabs */}
-        <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="skills">Skills</TabsTrigger>
-            <TabsTrigger value="roadmap">Roadmap</TabsTrigger>
-            <TabsTrigger value="profile">Profile</TabsTrigger>
-          </TabsList>
-
-          {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Skills Distribution Chart */}
-              <Card className="shadow-lg border-0">
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Code className="h-5 w-5 mr-2" />
-                    Skills Distribution
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-64">
+              <div className="space-y-6">
+                {/* Skill Distribution with Pie Chart */}
+                <div>
+                  <h3 className="font-semibold mb-4">Skill Distribution</h3>
+                  <div className="flex justify-center items-center gap-8 mb-6 w-full">
+                    {/* Chart */}
                     <ChartContainer
                       config={{
                         value: {
-                          label: "Percentage",
+                          label: "Skills",
                         },
                       }}
-                      className="h-full w-full"
+                      className="h-[350px] w-full max-w-[450px]"
                     >
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
@@ -562,280 +263,340 @@ export default function DashboardPage() {
                             data={skillCategories}
                             cx="50%"
                             cy="50%"
+                            labelLine={false}
+                            label={({ value }) => `${value}%`}
+                            outerRadius={130}
                             innerRadius={60}
-                            outerRadius={100}
-                            paddingAngle={5}
+                            fill="#8884d8"
                             dataKey="value"
+                            paddingAngle={2}
                           >
                             {skillCategories.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              <Cell key={`cell-${index}`} fill={entry.color} />
                             ))}
                           </Pie>
-                          <ChartTooltip content={<ChartTooltipContent />} />
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: 'white', 
+                              border: '1px solid #e5e7eb', 
+                              borderRadius: '8px',
+                              padding: '8px 12px'
+                            }}
+                            formatter={(value: any, name: any, props: any) => [props.payload.name, 'Skill']}
+                          />
                         </PieChart>
                       </ResponsiveContainer>
                     </ChartContainer>
+                    
+                    {/* Legend */}
+                    <div className="flex flex-col gap-3">
+                      {skillCategories.map((category) => (
+                        <div key={category.name} className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded-sm flex-shrink-0" style={{ backgroundColor: category.color }}></div>
+                          <span className="text-sm font-medium text-gray-700">{category.name}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 mt-4">
-                    {skillCategories.map((category, index) => (
-                      <div key={category.name} className="flex items-center">
-                        <div
-                          className="w-3 h-3 rounded-full mr-2"
-                          style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                        />
-                        <span className="text-sm">{category.name}</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                </div>
 
-              {/* Top Skills */}
-              <Card className="shadow-lg border-0">
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Star className="h-5 w-5 mr-2" />
-                    Your Top Skills
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {topSkills.slice(0, 12).map((skill) => (
-                      <Badge key={skill} variant="secondary" className="text-sm">
-                        {skill}
-                      </Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Recommended Roles */}
-            <Card className="shadow-lg border-0">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Briefcase className="h-5 w-5 mr-2" />
-                  Recommended Roles
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {recommendedRoles.map((role) => (
-                    <div key={role.title} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-semibold">{role.title}</h3>
-                        <Badge variant={role.match > 80 ? "default" : "secondary"}>
-                          {role.match}% match
+                {/* Skill Proficiency Breakdown */}
+                <div className="border-t pt-6">
+                  <h3 className="font-semibold mb-4">Skill Proficiency Breakdown</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium">Advanced Skills</span>
+                        <Badge className="bg-green-100 text-green-800">
+                          {topSkills.filter((_: string, i: number) => i < 4).length} skills
                         </Badge>
                       </div>
-                      <p className="text-sm text-gray-600 mb-3">{role.description}</p>
-                      <div className="mb-3">
-                        <Progress value={role.match} className="h-2" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-gray-700 mb-1">Missing skills:</p>
-                        <div className="flex flex-wrap gap-1">
-                          {role.missingSkills.slice(0, 3).map((skill) => (
-                            <Badge key={skill} variant="outline" className="text-xs">
-                              {skill}
-                            </Badge>
-                          ))}
-                        </div>
+                      <div className="flex flex-wrap gap-1">
+                        {topSkills.slice(0, 4).map((skill: string) => (
+                          <Badge key={skill} className="bg-green-100 text-green-800 text-xs">
+                            {skill}
+                          </Badge>
+                        ))}
                       </div>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
-          {/* Skills Tab */}
-          <TabsContent value="skills">
-            <Card className="shadow-lg border-0">
-              <CardHeader>
-                <CardTitle>All Skills</CardTitle>
-                <p className="text-gray-600">Complete overview of your technical skills</p>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {skillCategories.map((category) => (
-                    <div key={category.name}>
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-semibold">{category.name}</h3>
-                        <span className="text-sm text-gray-600">{category.value}%</span>
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium">Intermediate Skills</span>
+                        <Badge className="bg-yellow-100 text-yellow-800">
+                          {topSkills.filter((_: string, i: number) => i >= 4 && i < 8).length} skills
+                        </Badge>
                       </div>
-                      <Progress value={category.value} className="h-2" />
+                      <div className="flex flex-wrap gap-1">
+                        {topSkills.slice(4, 8).map((skill: string) => (
+                          <Badge key={skill} className="bg-yellow-100 text-yellow-800 text-xs">
+                            {skill}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
-          {/* Roadmap Tab */}
-          <TabsContent value="roadmap">
-            <Card className="shadow-lg border-0">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <MapPin className="h-5 w-5 mr-2" />
-                  Learning Roadmap
-                </CardTitle>
-                <p className="text-gray-600">
-                  {analysisData?.goal || "Your personalized learning path"}
-                </p>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  {roadmapPhases.map((phase, index) => (
-                    <div key={phase.id} className="flex items-start space-x-4">
-                      <div className="flex-shrink-0">
-                        {phase.status === "completed" ? (
-                          <CheckCircle2 className="h-6 w-6 text-green-600" />
-                        ) : phase.status === "current" ? (
-                          <Play className="h-6 w-6 text-blue-600" />
-                        ) : (
-                          <Circle className="h-6 w-6 text-gray-400" />
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium">Beginner Skills</span>
+                        <Badge className="bg-blue-100 text-blue-800">
+                          {topSkills.filter((_: string, i: number) => i >= 8).length} skills
+                        </Badge>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {topSkills.slice(8).map((skill: string) => (
+                          <Badge key={skill} className="bg-blue-100 text-blue-800 text-xs">
+                            {skill}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Resume Insights */}
+                <div className="border-t pt-6">
+                  <h3 className="font-semibold mb-3">Resume Insights</h3>
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <div className="text-center p-3 bg-blue-50 rounded-lg">
+                      <div className="text-2xl font-bold text-blue-600">{topSkills.length}</div>
+                      <div className="text-sm text-blue-700">Skills Extracted</div>
+                    </div>
+                    <div className="text-center p-3 bg-green-50 rounded-lg">
+                      <div className="text-2xl font-bold text-green-600">{workExperience.length}</div>
+                      <div className="text-sm text-green-700">Work Experiences</div>
+                    </div>
+                    <div className="text-center p-3 bg-purple-50 rounded-lg">
+                      <div className="text-2xl font-bold text-purple-600">
+                        {Math.round(
+                          workExperience.reduce((acc: number, exp: WorkExperience) => acc + exp.skills.length, 0) / workExperience.length,
                         )}
                       </div>
-                      <div className="flex-grow">
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="font-semibold text-lg">{phase.title}</h3>
-                          <Badge variant={phase.status === "current" ? "default" : "secondary"}>
-                            {phase.duration}
-                          </Badge>
-                        </div>
-                        <p className="text-gray-600 mb-3">{phase.description}</p>
-                        <div className="mb-3">
-                          <h4 className="font-medium mb-1">Skills to Learn:</h4>
-                          <div className="flex flex-wrap gap-1">
-                            {phase.skills.map((skill) => (
-                              <Badge key={skill} variant="outline" className="text-xs">
-                                {skill}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="mb-3">
-                          <h4 className="font-medium mb-1">Recommended Resources:</h4>
-                          <div className="space-y-1">
-                            {phase.resources.slice(0, 2).map((resource, idx) => (
-                              <div key={idx} className="text-sm text-blue-600 hover:underline cursor-pointer">
-                                📚 {resource.title} - {resource.provider}
-                              </div>
-                            ))}
-                          </div>
+                      <div className="text-sm text-purple-700">Avg Skills/Role</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Skill Trends */}
+                <div className="border-t pt-6">
+                  <h3 className="font-semibold mb-3">Most Mentioned Skills in Resume</h3>
+                  <div className="space-y-2">
+                    {topSkills.slice(0, 6).map((skill: string, index: number) => (
+                      <div key={skill} className="flex items-center justify-between">
+                        <span className="text-sm font-medium">{skill}</span>
+                        <div className="flex items-center space-x-2">
+                          <Progress value={100 - index * 15} className="w-20 h-2" />
+                          <span className="text-xs text-gray-500">{100 - index * 15}%</span>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+              </div>
+            </CardContent>
+          </Card>
 
-          {/* Profile Tab */}
-          <TabsContent value="profile">
-            <Card className="shadow-lg border-0">
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span className="flex items-center">
-                    <User className="h-5 w-5 mr-2" />
-                    Profile Information
-                  </span>
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsEditingProfile(!isEditingProfile)}
+          {/* Role Matching */}
+          <Card className="shadow-lg border-0 rounded-2xl card-hover animate-slideInLeft animate-delay-200">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Target className="h-6 w-6 text-green-600" />
+                <span>Role Matching</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {recommendedRoles.map((role, index) => (
+                  <div
+                    key={role.title}
+                    className={`p-4 border rounded-lg hover:bg-gray-50 transition-all duration-300 animate-slideInRight animate-delay-${index * 100}`}
                   >
-                    {isEditingProfile ? "Cancel" : "Edit"}
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h3 className="font-semibold text-gray-900">{role.title}</h3>
+                        <p className="text-sm text-gray-600">{role.description}</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-green-600">{role.match}%</div>
+                        <div className="text-xs text-gray-500">Match</div>
+                      </div>
+                    </div>
+                    <Progress value={role.match} className="mb-2 h-2" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-700 mb-1">Missing Skills:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {role.missingSkills.map((skill) => (
+                          <Badge key={skill} variant="outline" className="text-xs bg-red-50 text-red-700">
+                            {skill}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Work Experience */}
+          <Card className="shadow-lg border-0 rounded-2xl card-hover animate-slideInLeft animate-delay-300">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Briefcase className="h-6 w-6 text-orange-600" />
+                <span>Work Experience</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {workExperience.map((exp: WorkExperience, index: number) => (
+                  <div key={index} className="relative pl-6 border-l-2 border-gray-200 last:border-l-0">
+                    <div className="absolute -left-2 top-0 w-4 h-4 bg-blue-600 rounded-full"></div>
+                    <div className="pb-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <h3 className="font-semibold text-gray-900">{exp.title}</h3>
+                          <p className="text-blue-600 font-medium">{exp.company}</p>
+                        </div>
+                        <Badge variant="outline" className="bg-gray-50">
+                          <Clock className="w-3 h-3 mr-1" />
+                          {exp.duration}
+                        </Badge>
+                      </div>
+                      <p className="text-gray-600 mb-3">{exp.description}</p>
+                      <div className="flex flex-wrap gap-1">
+                        {exp.skills.map((skill: string) => (
+                          <Badge key={skill} className="bg-green-100 text-green-800 text-xs">
+                            {skill}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column */}
+        <div className="lg:col-span-4 space-y-6">
+          {/* Resume Score */}
+          <Card className="shadow-lg border-0 rounded-2xl card-hover animate-slideInRight">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Award className="h-6 w-6 text-yellow-600" />
+                <span>Resume Score</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-center">
+              {isFetchingScore ? (
+                <div className="flex flex-col items-center justify-center py-8">
+                  <div className="animate-spin h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full mb-4"></div>
+                  <p className="text-gray-600">Fetching your resume score...</p>
+                </div>
+              ) : scoreError ? (
+                <div className="flex flex-col items-center justify-center py-8">
+                  <div className="text-red-500 mb-4">
+                    <svg className="w-16 h-16 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <p className="text-gray-600 mb-4">Could not fetch score</p>
+                  <Button 
+                    onClick={retryFetchScore}
+                    className="skillmap-button text-white"
+                    size="sm"
+                  >
+                    Retry
                   </Button>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isEditingProfile ? (
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="name">Name</Label>
-                      <Input
-                        id="name"
-                        value={editedProfile?.name || userProfile.name}
-                        onChange={(e) =>
-                          setEditedProfile({
-                            ...userProfile,
-                            ...editedProfile,
-                            name: e.target.value,
-                          })
-                        }
+                </div>
+              ) : targetScore !== null ? (
+                <>
+                  <div className="relative w-32 h-32 mx-auto mb-4">
+                    <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 120 120">
+                      <circle cx="60" cy="60" r="50" stroke="#e5e7eb" strokeWidth="8" fill="none" />
+                      <circle
+                        cx="60"
+                        cy="60"
+                        r="50"
+                        stroke="#8b1538"
+                        strokeWidth="8"
+                        fill="none"
+                        strokeDasharray={`${(resumeScore / 100) * 314} 314`}
+                        strokeLinecap="round"
+                        className="transition-all duration-1000 ease-out"
                       />
-                    </div>
-                    <div>
-                      <Label htmlFor="title">Title</Label>
-                      <Input
-                        id="title"
-                        value={editedProfile?.title || userProfile.title || ""}
-                        onChange={(e) =>
-                          setEditedProfile({
-                            ...userProfile,
-                            ...editedProfile,
-                            title: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="bio">Bio</Label>
-                      <Textarea
-                        id="bio"
-                        value={editedProfile?.bio || userProfile.bio || ""}
-                        onChange={(e) =>
-                          setEditedProfile({
-                            ...userProfile,
-                            ...editedProfile,
-                            bio: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                    <Button
-                      onClick={() => {
-                        if (editedProfile) {
-                          setUserProfile(editedProfile)
-                        }
-                        setIsEditingProfile(false)
-                        setEditedProfile(null)
-                      }}
-                    >
-                      Save Changes
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div>
-                      <Label>Name</Label>
-                      <p className="text-gray-900">{userProfile.name}</p>
-                    </div>
-                    <div>
-                      <Label>Email</Label>
-                      <p className="text-gray-900">{userProfile.email}</p>
-                    </div>
-                    <div>
-                      <Label>Title</Label>
-                      <p className="text-gray-900">{userProfile.title}</p>
-                    </div>
-                    <div>
-                      <Label>Bio</Label>
-                      <p className="text-gray-900">{userProfile.bio}</p>
-                    </div>
-                    <div>
-                      <Label>Resume Upload Date</Label>
-                      <p className="text-gray-900">{userProfile.resumeUploadDate}</p>
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="text-3xl font-bold text-gray-900">{resumeScore}</div>
+                        <div className="text-sm text-gray-600">out of 100</div>
+                      </div>
                     </div>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                  <p className="text-gray-600">
+                    Your resume shows strong technical skills with room for improvement in soft skills and
+                    certifications.
+                  </p>
+                </>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          {/* Recommendations */}
+          <Card className="shadow-lg border-0 rounded-2xl card-hover animate-slideInRight animate-delay-100">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <BookOpen className="h-6 w-6 text-green-600" />
+                <span>Recommendations</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {recommendations.map((rec, index) => (
+                  <div
+                    key={index}
+                    className={`p-3 border rounded-lg hover:bg-gray-50 transition-all duration-300 animate-fadeIn animate-delay-${index * 100}`}
+                  >
+                    <div className="flex items-start space-x-3">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        {rec.type === "Course" && <BookOpen className="w-4 h-4 text-blue-600" />}
+                        {rec.type === "Tool" && <Settings className="w-4 h-4 text-blue-600" />}
+                        {rec.type === "Project" && <Code className="w-4 h-4 text-blue-600" />}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <h4 className="font-semibold text-sm text-gray-900">{rec.title}</h4>
+                          <Badge variant="outline" className="text-xs">
+                            {rec.type}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-gray-600 mb-1">{rec.provider}</p>
+                        <p className="text-xs text-gray-500">{rec.reason}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <Separator className="my-4" />
+              <Button asChild variant="outline" className="w-full hover-lift bg-transparent">
+                <Link href="/results">
+                  View Detailed Analysis
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
+  )
+}
+
+export default function DashboardOverviewPage() {
+  return (
+    <PageErrorBoundary>
+      <DashboardOverviewPageContent />
+    </PageErrorBoundary>
   )
 }

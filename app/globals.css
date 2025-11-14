@@ -220,6 +220,18 @@
   animation: slideInRight 0.6s ease-out;
 }
 
+.animate-slideInRight.animate-delay-100 {
+  animation-delay: 0.1s;
+}
+
+.animate-slideInRight.animate-delay-200 {
+  animation-delay: 0.2s;
+}
+
+.animate-slideInRight.animate-delay-300 {
+  animation-delay: 0.3s;
+}
+
 .animate-scaleIn {
   animation: scaleIn 0.4s ease-out;
 }
@@ -320,4 +332,45 @@ select {
 .card-hover:hover {
   transform: translateY(-2px);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+/* Chart animations */
+.chart-animate {
+  animation: chartGrow 1s ease-out;
+}
+
+@keyframes chartGrow {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Progress circle animation */
+.progress-circle {
+  transition: stroke-dasharray 1s ease-out;
+}
+
+/* Hover effects for dashboard cards */
+.dashboard-card {
+  transition: all 0.3s ease;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* Skill badge hover effects */
+.skill-badge {
+  transition: all 0.2s ease;
+}
+
+.skill-badge:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
