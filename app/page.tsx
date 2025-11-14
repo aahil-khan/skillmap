@@ -1,19 +1,115 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Menu, User, Upload, Users, Target, ArrowRight, X } from "lucide-react"
 import Navbar from "@/components/Navbar"
+import gsap from "gsap"
+import { ScrollTrigger } from "gsap/ScrollTrigger"
+
+gsap.registerPlugin(ScrollTrigger)
 
 export default function HomePage() {
   const [showExploreMenu, setShowExploreMenu] = useState(false)
   const [isLoaded, setIsLoaded] = useState(false)
+  const heroRef = useRef(null)
+  const featuresRef = useRef(null)
+  const stepsRef = useRef(null)
+  const ctaRef = useRef(null)
 
   useEffect(() => {
     setIsLoaded(true)
+  }, [])
+
+  useEffect(() => {
+    // Hero section animations
+    gsap.fromTo(
+      ".hero-title",
+      { opacity: 0, y: 40 },
+      { opacity: 1, y: 0, duration: 0.8, delay: 0.2 }
+    )
+    gsap.fromTo(
+      ".hero-subtitle",
+      { opacity: 0, y: 40 },
+      { opacity: 1, y: 0, duration: 0.8, delay: 0.4 }
+    )
+    gsap.fromTo(
+      ".hero-button",
+      { opacity: 0, y: 40 },
+      { opacity: 1, y: 0, duration: 0.8, delay: 0.6 }
+    )
+
+    // Feature cards stagger animation on scroll
+    gsap.utils.toArray(".feature-card").forEach((card: any, index: number) => {
+      gsap.fromTo(
+        card,
+        { opacity: 0, y: 60, rotationX: -10 },
+        {
+          opacity: 1,
+          y: 0,
+          rotationX: 0,
+          duration: 0.8,
+          delay: index * 0.15,
+          scrollTrigger: {
+            trigger: card,
+            start: "top 80%",
+            toggleActions: "play none none none",
+          },
+        }
+      )
+    })
+
+    // Steps animation on scroll
+    gsap.utils.toArray(".step-item").forEach((step: any, index: number) => {
+      gsap.fromTo(
+        step,
+        { opacity: 0, x: index % 2 === 0 ? -60 : 60 },
+        {
+          opacity: 1,
+          x: 0,
+          duration: 0.8,
+          delay: index * 0.15,
+          scrollTrigger: {
+            trigger: step,
+            start: "top 80%",
+            toggleActions: "play none none none",
+          },
+        }
+      )
+    })
+
+    // CTA section animation
+    gsap.fromTo(
+      ".cta-content",
+      { opacity: 0, scale: 0.95 },
+      {
+        opacity: 1,
+        scale: 1,
+        duration: 0.8,
+        scrollTrigger: {
+          trigger: ".cta-content",
+          start: "top 70%",
+          toggleActions: "play none none none",
+        },
+      }
+    )
+
+    // Parallax effect on scroll
+    gsap.to(".skillmap-bg", {
+      backgroundPosition: "50% 100%",
+      ease: "none",
+      scrollTrigger: {
+        trigger: "body",
+        scrub: 0.5,
+      },
+    })
+
+    return () => {
+      ScrollTrigger.getAll().forEach((trigger) => trigger.kill())
+    }
   }, [])
 
   const handleTrySkillMap = () => {
@@ -34,21 +130,19 @@ export default function HomePage() {
 
       {/* Hero Section */}
       <section className="py-20 px-4">
-        <div
-          className={`container mx-auto text-center max-w-4xl transition-all duration-1000 ${isLoaded ? "animate-fadeInUp" : "opacity-0"}`}
-        >
-          <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 animate-fadeInUp animate-delay-200">
+        <div className="container mx-auto text-center max-w-4xl">
+          <h1 className="hero-title text-5xl md:text-6xl font-bold text-gray-900 mb-6">
             Map your skills.{" "}
             <span className="text-blue-600 hover:scale-105 inline-block transition-transform duration-300">
               Bridge your gaps.
             </span>
           </h1>
-          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto animate-fadeInUp animate-delay-300">
+          <p className="hero-subtitle text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
             Get personalized insights into your skill gaps and actionable learning recommendations tailored for students
             and early-career developers.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fadeInUp animate-delay-400">
-            <Button onClick={handleTrySkillMap} size="lg" className="skillmap-button text-white text-lg px-8 hover-lift">
+          <div className="hero-button flex flex-col sm:flex-row gap-4 justify-center">
+            <Button onClick={handleTrySkillMap} size="lg" className="skillmap-button text-white text-lg px-8 hover-lift transform hover:scale-105 transition-all duration-300">
               Try SkillMap{" "}
               <ArrowRight className="ml-2 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
             </Button>
@@ -59,15 +153,15 @@ export default function HomePage() {
       {/* Features Section */}
       <section id="features" className="py-20 px-4 bg-white">
         <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-16 animate-fadeInUp">
+          <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Why Choose SkillMap?</h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Our AI-powered platform provides personalized learning paths based on your current skills and goals.
+              Our AI-powered pla  tform provides personalized learning paths based on your current skills and goals.
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 card-hover animate-slideInLeft">
+            <Card className="feature-card border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:translate-y-[-8px]">
               <CardContent className="p-8 text-center">
                 <Target className="h-12 w-12 text-blue-600 mx-auto mb-4 hover:scale-110 transition-transform duration-300" />
                 <h3 className="text-xl font-semibold mb-3">Personalized Analysis</h3>
@@ -77,7 +171,7 @@ export default function HomePage() {
               </CardContent>
             </Card>
 
-            <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 card-hover animate-slideInLeft animate-delay-200">
+            <Card className="feature-card border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:translate-y-[-8px]">
               <CardContent className="p-8 text-center">
                 <Upload className="h-12 w-12 text-green-600 mx-auto mb-4 hover:scale-110 transition-transform duration-300" />
                 <h3 className="text-xl font-semibold mb-3">Smart Recommendations</h3>
@@ -87,7 +181,7 @@ export default function HomePage() {
               </CardContent>
             </Card>
 
-            <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 card-hover animate-slideInLeft animate-delay-400">
+            <Card className="feature-card border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:translate-y-[-8px]">
               <CardContent className="p-8 text-center">
                 <Users className="h-12 w-12 text-purple-600 mx-auto mb-4 hover:scale-110 transition-transform duration-300" />
                 <h3 className="text-xl font-semibold mb-3">Built for Learners</h3>
@@ -103,7 +197,7 @@ export default function HomePage() {
       {/* How It Works */}
       <section id="how-it-works" className="py-20 px-4 skillmap-bg">
         <div className="container mx-auto max-w-4xl">
-          <div className="text-center mb-16 animate-fadeInUp">
+          <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">How SkillMap Works</h2>
             <p className="text-xl text-gray-600">Simple steps to discover your learning path</p>
           </div>
@@ -138,15 +232,15 @@ export default function HomePage() {
             ].map((step, index) => (
               <div
                 key={step.number}
-                className={`flex items-start space-x-6 animate-slideInRight animate-delay-${(index + 1) * 100}`}
+                className="step-item flex items-start space-x-6 group"
               >
                 <div
-                  className={`flex-shrink-0 w-12 h-12 ${step.color} text-white rounded-full flex items-center justify-center font-bold text-lg hover:scale-110 transition-transform duration-300`}
+                  className={`flex-shrink-0 w-12 h-12 ${step.color} text-white rounded-full flex items-center justify-center font-bold text-lg group-hover:scale-110 transition-all duration-300 group-hover:shadow-lg`}
                 >
                   {step.number}
                 </div>
-                <div>
-                  <h3 className="text-xl font-semibold mb-2 hover:text-blue-600 transition-colors duration-300">
+                <div className="transform group-hover:translate-x-2 transition-transform duration-300">
+                  <h3 className="text-xl font-semibold mb-2 group-hover:text-blue-600 transition-colors duration-300">
                     {step.title}
                   </h3>
                   <p className="text-gray-600">{step.description}</p>
@@ -158,13 +252,13 @@ export default function HomePage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-4 skillmap-header text-white animate-fadeInUp">
-        <div className="container mx-auto text-center max-w-3xl">
+      <section className="py-20 px-4 skillmap-header text-white">
+        <div className="cta-content container mx-auto text-center max-w-3xl">
           <h2 className="text-3xl md:text-4xl font-bold mb-6">Ready to Map Your Skills?</h2>
           <p className="text-xl mb-8 text-white/90">
             Join thousands of developers who've accelerated their learning with SkillMap.
           </p>
-          <Button onClick={handleTrySkillMap} size="lg" variant="secondary" className="text-lg px-8 hover-lift hover:scale-105">
+          <Button onClick={handleTrySkillMap} size="lg" variant="secondary" className="text-lg px-8 hover-lift transform hover:scale-105 transition-all duration-300">
             Start Your Journey{" "}
             <ArrowRight className="ml-2 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
           </Button>
@@ -172,10 +266,10 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12 px-4 animate-fadeIn">
+      <footer className="bg-gray-900 text-white py-12 px-4">
         <div className="container mx-auto text-center">
           <div className="flex items-center justify-center space-x-2 mb-4 hover:scale-105 transition-transform duration-300">
-            <div className="text-xl font-bold">skillMap</div>
+            <div className="text-xl font-bold">SkillMap</div>
           </div>
           <p className="text-gray-400">Empowering developers to bridge their skill gaps with AI-powered insights.</p>
         </div>

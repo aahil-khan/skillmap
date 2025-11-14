@@ -110,7 +110,7 @@ export default function Navbar({ showExploreMenu, setShowExploreMenu }: NavbarPr
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
 
         <Link href="/" className="text-2xl font-bold hover:scale-105 transition-transform duration-300">
-          skillMap
+          SkillMap
         </Link>
 
         <div className="flex items-center space-x-4">
@@ -163,7 +163,7 @@ export default function Navbar({ showExploreMenu, setShowExploreMenu }: NavbarPr
                 <Button variant="ghost" size="sm" className="text-white hover:bg-white/20" asChild>
                   <Link href="/auth">
                     <User className="h-5 w-5" />
-                    <span className="ml-2 text-sm">login</span>
+                    <span className="ml-2 text-sm">Login</span>
                   </Link>
                 </Button>
               )}
