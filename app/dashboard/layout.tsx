@@ -8,12 +8,14 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
-import { Menu, User, Calendar, Mail, Target, Award, Clock, ArrowRight, Briefcase, BookOpen, Code, Settings, MapPin, CheckCircle2, Circle, Play, Star, ExternalLink, Users, ArrowLeft} from "lucide-react"
+import { Menu, User, Calendar, Mail, Target, Award, Clock, ArrowRight, Briefcase, BookOpen, Code, Settings, MapPin, CheckCircle2, Circle, Play, Star, ExternalLink, Users, ArrowLeft, Upload, ChevronDown} from "lucide-react"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { apiFetch } from "@/lib/utils"
+import gsap from "gsap"
+import Navbar from "@/components/Navbar"
 
 interface UserProfile {
   name: string
@@ -42,6 +44,11 @@ export default function DashboardLayout({
 
   // Check if we're on a sub-page
   const isOnSubPage = pathname !== "/dashboard" && (pathname === "/dashboard/learning-roadmap" || pathname === "/dashboard/peer-matching")
+
+  // Handle Explore menu animation
+  useEffect(() => {
+    // Explore animation is now handled in Navbar component
+  }, [])
 
   useEffect(() => {
     let intervalId: NodeJS.Timeout | null = null
@@ -249,28 +256,10 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen skillmap-bg">
-      {/* Header */}
-      <header className="skillmap-header text-white animate-fadeInDown">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
-              <Menu className="h-5 w-5" />
-              <span className="ml-2 text-sm">Explore</span>
-            </Button>
-          </div>
-
-          <Link href="/" className="text-2xl font-bold">
-            SkillMap
-          </Link>
-
-          <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
-              <User className="h-5 w-5" />
-              <span className="ml-2 text-sm">{userProfile.name}</span>
-            </Button>
-          </div>
-        </div>
-      </header>
+      <Navbar 
+        isDashboard={true}
+        userProfile={userProfile ? { name: userProfile.name, email: userProfile.email } : null}
+      />
 
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         {/* Dashboard Header */}
