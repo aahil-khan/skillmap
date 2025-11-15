@@ -117,8 +117,11 @@ export default function Navbar({
     }
   }, [showProfileMenu])
 
-  const handleLogout = async () => {
+  const handleLogoutComplete = () => {
+    setIsAuthenticated(false)
+    setUserDetails(null)
     setShowProfileMenu(false)
+    router.push('/auth')
   }
 
 
@@ -155,6 +158,7 @@ export default function Navbar({
                       showProfileMenu={showProfileMenu}
                       setShowProfileMenu={setShowProfileMenu}
                       isAuthenticated={isAuthenticated}
+                      onLogout={handleLogoutComplete}
                     />
                   )}
                 </div>
@@ -176,13 +180,6 @@ export default function Navbar({
         </div>
       </div>
 
-      {/* Click outside to close profile menu */}
-      {showProfileMenu && (
-        <div 
-          className="fixed inset-0 z-40" 
-          onClick={() => setShowProfileMenu(false)}
-        />
-      )}
     </header>
   )
 }

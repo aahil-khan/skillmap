@@ -14,7 +14,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { apiFetch } from "@/lib/utils"
-import gsap from "gsap"
 import Navbar from "@/components/Navbar"
 
 interface UserProfile {
@@ -44,11 +43,6 @@ export default function DashboardLayout({
 
   // Check if we're on a sub-page
   const isOnSubPage = pathname !== "/dashboard" && (pathname === "/dashboard/learning-roadmap" || pathname === "/dashboard/peer-matching")
-
-  // Handle Explore menu animation
-  useEffect(() => {
-    // Explore animation is now handled in Navbar component
-  }, [])
 
   useEffect(() => {
     let intervalId: NodeJS.Timeout | null = null

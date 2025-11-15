@@ -1,11 +1,11 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { User, LogOut, ChevronDown, Home } from "lucide-react"
+import { User, LogOut, Home } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import gsap from "gsap"
 
@@ -14,6 +14,7 @@ interface ProfileDropdownProps {
   showProfileMenu: boolean
   setShowProfileMenu: (show: boolean) => void
   isAuthenticated: boolean
+  onLogout?: () => void
 }
 
 export default function ProfileDropdown({
@@ -21,6 +22,7 @@ export default function ProfileDropdown({
   showProfileMenu,
   setShowProfileMenu,
   isAuthenticated,
+  onLogout,
 }: ProfileDropdownProps) {
   const router = useRouter()
 
@@ -42,7 +44,11 @@ export default function ProfileDropdown({
     localStorage.removeItem('extracted-skills')
     localStorage.removeItem('user-skills')
     setShowProfileMenu(false)
-    router.push('/')
+    if (onLogout) {
+      onLogout()
+    } else {
+      router.push('/auth')
+    }
   }
 
   if (!isAuthenticated || !userDetails) {
