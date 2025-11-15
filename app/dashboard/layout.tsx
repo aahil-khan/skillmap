@@ -255,12 +255,12 @@ export default function DashboardLayout({
           <div className="flex items-center space-x-4">
             <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
               <Menu className="h-5 w-5" />
-              <span className="ml-2 text-sm">explore</span>
+              <span className="ml-2 text-sm">Explore</span>
             </Button>
           </div>
 
           <Link href="/" className="text-2xl font-bold">
-            skillMap
+            SkillMap
           </Link>
 
           <div className="flex items-center space-x-4">

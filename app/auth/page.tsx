@@ -30,6 +30,43 @@ function AuthPageContent() {
       let result
       if (type === "login") {
         result = await supabase.auth.signInWithPassword({ email, password })
+        
+        if (result.error) {
+          console.error("Auth error:", result.error)
+          setError(result.error.message)
+          setLoading(false)
+          return
+        }
+        
+        if (result.data.session) {
+          // Store JWT in localStorage
+          localStorage.setItem("sb-jwt", result.data.session.access_token)
+          
+          // Check if user has a profile in the database (existing user)
+          try {
+            const { data: userProfile, error: profileError } = await supabase
+              .from('user_profiles')
+              .select('id')
+              .eq('userid', result.data.user?.id)
+              .single()
+            
+            console.log("Profile check - data:", userProfile, "error:", profileError)
+            
+            if (userProfile) {
+              // User has a profile → existing user → go to dashboard
+              console.log("Existing user, redirecting to dashboard")
+              router.push("/dashboard")
+            } else {
+              // No profile → new user → go to upload
+              console.log("New user, redirecting to upload")
+              router.push("/upload")
+            }
+          } catch (err) {
+            console.error("Error checking user profile:", err)
+            // If there's an error checking profile, default to upload
+            router.push("/upload")
+          }
+        }
       } else {
         // For signup, we need to create the user in auth and then in our custom table
         console.log("Starting signup process...")
@@ -69,7 +106,7 @@ function AuthPageContent() {
           // After successful signup, redirect to login
           if (!result.data.session) {
             setError("Account created successfully! Please check your email to confirm your account, then sign in.")
-            // Switch to login mode after 2 seconds
+            // Switch to login mode after 3 seconds
             setTimeout(() => {
               setIsSignup(false)
               setError("")
@@ -79,17 +116,16 @@ function AuthPageContent() {
             }, 3000)
             setLoading(false)
             return
+          } else {
+            // Signup with immediate session - redirect to upload for new user
+            localStorage.setItem("sb-jwt", result.data.session.access_token)
+            console.log("New signup user, redirecting to upload")
+            router.push("/upload")
           }
+        } else if (result.error) {
+          console.error("Signup error:", result.error)
+          setError(result.error.message)
         }
-      }
-      
-      if (result.error) {
-        console.error("Auth error:", result.error)
-        setError(result.error.message)
-      } else if (result.data.session) {
-        // Store JWT in localStorage
-        localStorage.setItem("sb-jwt", result.data.session.access_token)
-        router.push("/upload")
       }
     } catch (err) {
       console.error("Unexpected error:", err)
