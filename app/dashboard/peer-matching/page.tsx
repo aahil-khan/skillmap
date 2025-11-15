@@ -28,6 +28,7 @@ import {
   Github,
   Linkedin,
   Globe,
+  AlertCircle,
 } from "lucide-react"
 
 // Types
@@ -368,69 +369,92 @@ export default function PeerMatchingPage() {
   const [loadingDSA, setLoadingDSA] = useState(false)
   const [hasResumeData, setHasResumeData] = useState(false)
   const [hasLeetCodeData, setHasLeetCodeData] = useState(false)
-  const [animatingCards, setAnimatingCards] = useState<Set<string>>(new Set())
+  const [currentPeerIndex, setCurrentPeerIndex] = useState(0)
   const [posts, setPosts] = useState<Post[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [animatingCards, setAnimatingCards] = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    const peerPermission = localStorage.getItem("peer-permission-granted")
-    const savedProfile = localStorage.getItem("peer-profile-data")
+    try {
+      // Initialize profile from localStorage
+      const savedProfile = localStorage.getItem("peer-profile-data")
+      const permission = localStorage.getItem("peer-permission-granted")
+      
+      if (permission && savedProfile) {
+        const profile = JSON.parse(savedProfile)
+        setProfileData(profile)
+        setIsPublicProfile(true)
+      }
 
-    setIsPublicProfile(!!peerPermission)
-    if (savedProfile) {
-      setProfileData(JSON.parse(savedProfile))
+      // Check for resume data
+      const profileData = localStorage.getItem("profile-data")
+      if (profileData) {
+        setHasResumeData(true)
+      }
+
+      // Check for LeetCode data
+      const leetcodeData = localStorage.getItem("leetcode-profile")
+      if (leetcodeData) {
+        setHasLeetCodeData(true)
+      }
+
+      // Load mock posts
+      const mockPosts: Post[] = [
+        {
+          id: "1",
+          author: "Tiger Bear",
+          avatar: "/placeholder.svg?height=40&width=40&text=TB",
+          content:
+            "Just completed our hackathon project! Built a real-time collaboration tool with my study buddy Tiger Bear. Amazing what we can achieve together! 🚀",
+          achievement: "Won 2nd place at TechHack 2024",
+          timestamp: "2 hours ago",
+          likes: 24,
+          comments: 8,
+          tags: ["Hackathon", "Collaboration", "React"],
+        },
+        {
+          id: "2",
+          author: "Panda Wolf",
+          avatar: "/placeholder.svg?height=40&width=40&text=PW",
+          content:
+            "Shoutout to my coding partner Eagle Deer for helping me crack dynamic programming! We solved 15 hard problems together this week.",
+          achievement: "Solved 100+ LeetCode problems",
+          timestamp: "5 hours ago",
+          likes: 18,
+          comments: 5,
+          tags: ["DSA", "Study Partners", "Achievement"],
+        },
+        {
+          id: "3",
+          author: "Rabbit Owl",
+          avatar: "/placeholder.svg?height=40&width=40&text=RO",
+          content:
+            "Our open source project just hit 1k stars! Grateful for my amazing co-maintainer Dolphin Cat. Teamwork makes the dream work! ⭐",
+          achievement: "Open Source Milestone",
+          timestamp: "1 day ago",
+          likes: 42,
+          comments: 12,
+          tags: ["Open Source", "Milestone", "Teamwork"],
+        },
+      ]
+      setPosts(mockPosts)
+    } catch (err) {
+      console.error("Failed to initialize peer matching page:", err)
+      setError("Failed to load peer matching data. Please try refreshing the page.")
     }
+  }, [])
 
-    const skillsData = localStorage.getItem("user-skills") || localStorage.getItem("extracted-skills")
-    setHasResumeData(!!skillsData)
-
-    const leetcodeData = localStorage.getItem("leetcode-connected")
-    setHasLeetCodeData(!!leetcodeData)
-
-    if (peerPermission && savedProfile) {
+  useEffect(() => {
+    if (isPublicProfile && mode === "resume" && resumePeers.length === 0 && hasResumeData) {
       loadResumePeers()
     }
+  }, [isPublicProfile, mode, hasResumeData])
 
-    // Load mock posts
-    const mockPosts: Post[] = [
-      {
-        id: "1",
-        author: "Luna Fox",
-        avatar: "/placeholder.svg?height=40&width=40&text=LF",
-        content:
-          "Just completed our hackathon project! Built a real-time collaboration tool with my study buddy Tiger Bear. Amazing what we can achieve together! 🚀",
-        achievement: "Won 2nd place at TechHack 2024",
-        timestamp: "2 hours ago",
-        likes: 24,
-        comments: 8,
-        tags: ["Hackathon", "Collaboration", "React"],
-      },
-      {
-        id: "2",
-        author: "Panda Wolf",
-        avatar: "/placeholder.svg?height=40&width=40&text=PW",
-        content:
-          "Shoutout to my coding partner Eagle Deer for helping me crack dynamic programming! We solved 15 hard problems together this week.",
-        achievement: "Solved 100+ LeetCode problems",
-        timestamp: "5 hours ago",
-        likes: 18,
-        comments: 5,
-        tags: ["DSA", "Study Partners", "Achievement"],
-      },
-      {
-        id: "3",
-        author: "Rabbit Owl",
-        avatar: "/placeholder.svg?height=40&width=40&text=RO",
-        content:
-          "Our open source project just hit 1k stars! Grateful for my amazing co-maintainer Dolphin Cat. Teamwork makes the dream work! ⭐",
-        achievement: "Open Source Milestone",
-        timestamp: "1 day ago",
-        likes: 42,
-        comments: 12,
-        tags: ["Open Source", "Milestone", "Teamwork"],
-      },
-    ]
-    setPosts(mockPosts)
-  }, [])
+  useEffect(() => {
+    if (isPublicProfile && mode === "dsa" && dsaPeers.length === 0 && hasLeetCodeData) {
+      loadDSAPeers()
+    }
+  }, [isPublicProfile, mode, hasLeetCodeData])
 
   const loadResumePeers = async () => {
     setLoadingResume(true)
@@ -718,6 +742,37 @@ export default function PeerMatchingPage() {
 
   const currentPeers = mode === "resume" ? resumePeers : dsaPeers
   const isLoading = mode === "resume" ? loadingResume : loadingDSA
+
+  // Show error state if there's an error
+  if (error) {
+    return (
+      <div className="min-h-screen skillmap-bg p-4">
+        <div className="container mx-auto">
+          <div className="max-w-md mx-auto mt-20">
+            <Card className="border-2 border-red-200 bg-red-50">
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                    <AlertCircle className="h-6 w-6 text-red-600" />
+                  </div>
+                  <h2 className="text-xl font-bold text-red-900">Error</h2>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-red-800">{error}</p>
+                <Button
+                  onClick={() => window.location.reload()}
+                  className="w-full bg-red-600 hover:bg-red-700 text-white"
+                >
+                  Retry
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (!isPublicProfile || !currentPeers.length || isLoading) {
     return (
